@@ -1,0 +1,139 @@
+You are a senior Flutter architect and mobile developer.
+
+Your task is to design and generate a complete Flutter mobile application for managing personal inventory (personal asset manager). The app must prioritize FAST data entry and SIMPLE usage.
+
+The main goal of this application is to allow users to quickly record items they own, search items to check if they already bought them, and manage quantities.
+
+The app should be optimized for personal usage, not enterprise warehouse systems.
+
+--------------------------------------------------
+APP CORE IDEA
+Users often forget whether they already bought something.  
+This app allows them to quickly:
+- take a photo
+- enter quantity
+- assign a category
+- save instantly
+
+All other information can be edited later.
+The design must prioritize **Quick Add workflow**.
+
+--------------------------------------------------
+CORE FEATURES
+1. QUICK ADD ITEM (most important)
+User flow:
+Open app → press "+" → camera opens → take photo → enter quantity → select category → press save
+Required fields: image, quantity, category
+Optional fields (editable later): name, purchase price, purchase date, store, serial number, barcode, location, notes, tags
+
+2. ITEM MANAGEMENT
+Each item contains: id, image, name, quantity, category, location, notes, barcode, tags, created_at, updated_at
+User can: edit item, update quantity, add more images, add notes
+
+3. SEARCH FUNCTION
+Users must be able to search items by: name, category, barcode, tags. Search should be very fast.
+
+4. CHECK IF ITEM ALREADY EXISTS
+If a user searches for an existing item (e.g., "Router"), show a prominent result: "You already own this item" along with the current quantity.
+
+5. CATEGORY MANAGEMENT
+Users can create, edit, delete categories (e.g., Electronics, PC Parts, Tools, Kitchen, Books, Clothes, Cables).
+
+6. LOCATION MANAGEMENT
+Users can define storage locations (e.g., Home > Bedroom > Office Desk).
+
+7. BARCODE SCANNING
+Use camera barcode scanning to search items or add items quickly.
+
+8. IMAGE SUPPORT
+Support primary image and optional additional images (stored locally).
+
+9. ITEM HISTORY
+Track changes (e.g., "10 Mar: +2 HDMI cable").
+
+10. WISHLIST
+User can create a list of items they want to buy later.
+
+11. DASHBOARD
+Show statistics: total items, total categories, low stock items.
+
+12. OFFLINE FIRST
+The application must work completely offline.
+
+--------------------------------------------------
+TECH STACK
+Flutter, Dart
+State management: Riverpod (preferred)
+Local database: Drift (SQLite)
+Image storage: Local device storage
+Barcode scanner: mobile_scanner package
+
+--------------------------------------------------
+APP STRUCTURE
+Use clean architecture.
+Project structure:
+lib/
+  core/ (constants, utils)
+  features/
+    items/ (data, domain, presentation)
+    categories/
+    locations/
+    dashboard/
+    wishlist/
+  shared/
+  main.dart
+
+--------------------------------------------------
+UI/UX & DESIGN LANGUAGE (CRITICAL)
+The app is named "SwiftKeep". The UI must be modern, minimal, mobile-first, and highly optimized for the Thumb Zone. 
+- Style: Modern Minimalist / Light Neo-Brutalism (clear contrasts, moderate rounded corners, clean cards).
+- Colors: 
+  - Primary: Indigo Blue (#4F46E5)
+  - Accent/Action: Emerald Green (#10B981) - used for Save, Add, positive actions.
+  - Background: Pure White (#FFFFFF) or light Slate Gray (#F8FAFC).
+  - Text: Slate Gray (#1E293B for headings, #64748B for secondary).
+- Typography: Inter or Rubik font.
+
+--------------------------------------------------
+MAIN SCREENS & LAYOUT DETAILS
+
+1. DASHBOARD SCREEN
+- Top: Personalized greeting ("Hello, Alex!") and a large Search icon.
+- Middle: Large, clean stats cards (Total Items, Total Categories, Low Stock Items).
+- Bottom: Recent Activity list.
+- FAB: A large Indigo Blue "+" button positioned centrally at the bottom navigation area for immediate access to Quick Add.
+
+2. QUICK ADD SCREEN (The heart of the app)
+- Layout: Top 2/3 of the screen is the live Camera Preview. The bottom 1/3 is a fixed Bottom Sheet for data entry.
+- Interaction: 
+  - User takes a photo. A small thumbnail appears.
+  - Quantity Selector: Large [-] and [+] buttons (default is 1).
+  - Category Selector: Displayed as horizontal selectable "Chips" (e.g., Electronics, Tools) for 1-tap selection, avoiding dropdowns.
+  - Action: A massive, full-width Emerald Green "SAVE INSTANTLY" button at the very bottom. Pressing it saves immediately.
+
+3. ITEMS LIST SCREEN
+- Top: Fixed Search Bar (with a barcode scan icon inside) and a horizontal scrollable row of Filter Chips (All, Electronics, Tools...).
+- List: Clean Card UI for each item showing a square thumbnail image on the left, Name (bold) and Category in the middle, and Quantity highlighted on the right.
+- Swipe Actions: Swipe right to quickly add +1 to quantity.
+
+4. ITEM DETAIL SCREEN
+Display full item information. Image carousel at the top, editable fields below, and a small Item History timeline at the bottom.
+
+--------------------------------------------------
+DATABASE DESIGN
+Tables required: items, categories, locations, item_history, wishlist
+
+--------------------------------------------------
+BONUS FEATURES (if possible)
+- Image recognition suggestion
+- Smart search
+- Export CSV backup
+- Dark mode
+
+--------------------------------------------------
+IMPORTANT
+The code must be: production-quality, clean, modular, scalable.
+Include: models, repositories, providers, UI screens, database schema.
+
+Explain architecture briefly.
+Then generate Flutter code step-by-step.

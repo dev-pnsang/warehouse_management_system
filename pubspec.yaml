@@ -1,0 +1,41 @@
+name: swift_keep
+description: "SwiftKeep - Personal inventory & asset manager. Quick add, search, offline-first."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.3 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  # Local database
+  drift: ^2.16.0
+  sqlite3_flutter_libs: ^0.5.20
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  # Barcode & camera
+  # 6.x dùng Kotlin 2.1.0, dễ xung đột với toolchain hiện tại.
+  # Dùng bản 5.2.3 ổn định hơn cho Kotlin 1.9.x.
+  mobile_scanner: 5.2.3
+  image_picker: ^1.0.7
+  # Utils
+  uuid: ^4.3.3
+  intl: ^0.19.0
+  # UI
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.8
+  drift_dev: ^2.16.0
+  riverpod_generator: ^2.3.9
+
+flutter:
+  uses-material-design: true
