@@ -25,6 +25,7 @@ dependencies:
   image_picker: ^1.0.7
   # Utils
   uuid: ^4.3.3
+  image: ^4.3.0
   intl: ^0.19.0
   # Export
   excel: ^4.0.6

@@ -33,19 +33,69 @@ flutter run
 
 **iOS**: Đã cấu hình quyền camera và photo library trong `Info.plist`.
 
-## Đồng bộ Google Sheets
+## Đồng bộ Google Sheets (Apps Script)
 
-Trong **Cài đặt** có mục **Đồng bộ lên Google Sheets**. Lần đầu chọn sẽ đăng nhập Google (OAuth), sau đó app tạo một spreadsheet tên **"SwiftKeep Data"** trong tài khoản của bạn với 2 sheet: **Items** (id, name, quantity, category, barcode, notes, created) và **Categories** (id, name). Các lần đồng bộ sau sẽ ghi đè dữ liệu lên cùng file đó.
+Trong **Cài đặt** → **Cấu hình URL đồng bộ**: dán URL Web App từ Google Apps Script. **Đồng bộ lên Google Sheets** sẽ gửi Items (kèm ảnh thumbnail base64) và Categories lên sheet. Không cần Google Cloud Console.
 
-**Cấu hình (bắt buộc):**
+**Cách thiết lập:**
 
-1. Vào [Google Cloud Console](https://console.cloud.google.com/) → tạo project (hoặc chọn project có sẵn).
-2. Bật **Google Sheets API**: APIs & Services → Enable APIs → tìm "Google Sheets API" → Enable.
-3. Tạo OAuth 2.0 Client ID:
-   - **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**.
-   - Application type: **Android** (package name: `com.swiftkeep.swift_keep`, lấy SHA-1 bằng `cd android && ./gradlew signingReport`).
-   - Tạo thêm **iOS** client nếu chạy trên iPhone (bundle ID trong Xcode).
-4. Không cần nhúng file JSON key vào app; Google Sign-In dùng client ID đã đăng ký theo platform.
+1. Tạo (hoặc mở) **đúng** file Google Sheet cần ghi dữ liệu. Script phải mở từ file này (Extensions → Apps Script) thì `getActiveSpreadsheet()` mới trỏ đúng sheet.
+2. Trong file Sheet đó: Extensions → Apps Script, dán code bên dưới (hoặc copy toàn bộ `docs/APPS_SCRIPT_GSHEETS.js`) — có cột **Image** và ghi ảnh từ `imageBase64`.
+3. Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone. Copy **Web app URL**.
+4. Trong app: Cài đặt → Cấu hình URL đồng bộ → dán URL → Lưu. Sau đó dùng **Đồng bộ lên Google Sheets**.
+
+**Mẫu Apps Script (doPost, có cột ảnh):**
+
+```javascript
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var items = data.items || [];
+    var categories = data.categories || [];
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var itemsSheet = ss.getSheetByName('Items') || ss.insertSheet('Items');
+    itemsSheet.clear();
+    itemsSheet.setRowHeights(1, Math.max(items.length + 1, 1), 80);
+    itemsSheet.getRange(1, 1, 1, 8).setValues([['ID', 'Name', 'Quantity', 'Category', 'Barcode', 'Notes', 'Created', 'Image']]);
+    itemsSheet.setColumnWidth(8, 120);
+    if (items.length > 0) {
+      var rowData = items.map(function(i) {
+        return [i.id, i.name || '', i.quantity, i.category || '', i.barcode || '', i.notes || '', i.createdAt || ''];
+      });
+      itemsSheet.getRange(2, 1, items.length + 1, 7).setValues(rowData);
+      for (var r = 0; r < items.length; r++) {
+        if (items[r].imageBase64) {
+          try {
+            var blob = Utilities.newBlob(Utilities.base64Decode(items[r].imageBase64), 'image/jpeg', 'item.jpg');
+            itemsSheet.insertImage(blob, 8, r + 2);
+          } catch (err) {
+            Logger.log('Row ' + (r + 2) + ' image error: ' + err.toString());
+          }
+        }
+      }
+    }
+
+    var catSheet = ss.getSheetByName('Categories') || ss.insertSheet('Categories');
+    catSheet.clear();
+    catSheet.appendRow(['ID', 'Name']);
+    if (categories.length > 0) {
+      var catRows = categories.map(function(c) { return [c.id, c.name]; });
+      catSheet.getRange(2, 1, categories.length + 1, 2).setValues(catRows);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ status: 'ok' })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: String(err) })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+```
+
+**Nếu đồng bộ thành công nhưng sheet không có dữ liệu / không có ảnh:**  
+(1) Trong app, sau khi bấm đồng bộ xem log: `[Sync] Gửi kèm ảnh: X/Y items` và `Response: ... body={"status":"ok","itemsReceived":N,...}`. Nếu **itemsReceived: 0** thì script không nhận được POST body (kiểm tra URL đúng Web App URL dạng `.../exec`, script có kiểm tra `e.postData.contents`).  
+(2) Script phải mở từ **chính file Google Sheet** cần ghi (Extensions → Apps Script từ file đó), rồi Deploy.  
+(3) Cập nhật script bằng **toàn bộ** mẫu (hoặc `docs/APPS_SCRIPT_GSHEETS.js`), sau đó **Deploy → Manage deployments → Edit → New version → Deploy**.  
+(4) Apps Script → Executions: xem log `Items received`, `Spreadsheet`, và lỗi chèn ảnh (nếu có).
 
 ## Cấu trúc thư mục `lib/`
 

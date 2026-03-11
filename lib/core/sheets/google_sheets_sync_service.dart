@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../database/app_database.dart';
@@ -42,6 +44,23 @@ class GoogleSheetsSyncService {
     debugPrint('[Sync] $message');
   }
 
+  /// Đọc ảnh từ [imagePath], resize (max [maxWidth]), encode JPEG quality [jpegQuality], trả về base64 hoặc null.
+  static Future<String?> _itemImageBase64(String imagePath, {int maxWidth = 200, int jpegQuality = 82}) async {
+    try {
+      final file = File(imagePath);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      final w = decoded.width > maxWidth ? maxWidth : decoded.width;
+      final resized = img.copyResize(decoded, width: w);
+      final jpeg = img.encodeJpg(resized, quality: jpegQuality);
+      return base64Encode(jpeg);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> syncViaAppsScript() async {
     _log('Bắt đầu đồng bộ...');
     final url = await getSyncUrl();
@@ -57,20 +76,27 @@ class GoogleSheetsSyncService {
     _log('Đã lấy dữ liệu: ${items.length} items, ${categories.length} categories');
     final catMap = {for (var c in categories) c.id: c.name};
 
+    const maxThumbnailWidth = 200;
+    const jpegQuality = 82;
+    final itemList = <Map<String, dynamic>>[];
+    for (final i in items) {
+      final map = <String, dynamic>{
+        'id': i.id,
+        'name': i.name ?? '',
+        'quantity': i.quantity,
+        'category': i.categoryId != null ? (catMap[i.categoryId] ?? '') : '',
+        'barcode': i.barcode ?? '',
+        'notes': i.notes ?? '',
+        'createdAt': i.createdAt.toIso8601String(),
+      };
+      final b64 = await _itemImageBase64(i.imagePath, maxWidth: maxThumbnailWidth, jpegQuality: jpegQuality);
+      if (b64 != null) map['imageBase64'] = b64;
+      itemList.add(map);
+    }
+    final withImage = itemList.where((m) => m.containsKey('imageBase64')).length;
+    _log('Gửi kèm ảnh: $withImage/${items.length} items');
     final payload = <String, dynamic>{
-      'items': [
-        for (final i in items)
-          {
-            'id': i.id,
-            'name': i.name ?? '',
-            'quantity': i.quantity,
-            'category':
-                i.categoryId != null ? (catMap[i.categoryId] ?? '') : '',
-            'barcode': i.barcode ?? '',
-            'notes': i.notes ?? '',
-            'createdAt': i.createdAt.toIso8601String(),
-          },
-      ],
+      'items': itemList,
       'categories': [
         for (final c in categories)
           {
@@ -110,6 +136,23 @@ class GoogleSheetsSyncService {
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       _log('Lỗi HTTP ${resp.statusCode}: ${resp.body}');
       throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
+    }
+    try {
+      final json = jsonDecode(resp.body) as Map<String, dynamic>?;
+      if (json != null) {
+        if (json['status'] == 'error') {
+          _log('Script lỗi: ${json['message']}');
+          throw Exception('Script: ${json['message']}');
+        }
+        final received = json['itemsReceived'] as int?;
+        if (received != null && received != items.length) {
+          _log('Cảnh báo: script nhận $received items, app gửi ${items.length}. Kiểm tra URL và script.');
+        }
+        final imagesInserted = json['imagesInserted'] as int?;
+        if (imagesInserted != null) _log('Script đã chèn ảnh: $imagesInserted');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
     }
     _log('Đồng bộ thành công.');
   }
