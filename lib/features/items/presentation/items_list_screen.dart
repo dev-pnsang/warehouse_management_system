@@ -7,7 +7,7 @@ import '../../categories/data/categories_repository.dart';
 import '../data/items_repository.dart';
 import '../../../core/widgets/image_preview_screen.dart';
 import 'item_detail_screen.dart';
-import 'quick_add_screen.dart';
+import 'add_item_sheet.dart';
 import 'barcode_scanner_screen.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
@@ -104,8 +104,12 @@ class _ItemsListScreenState extends ConsumerState<ItemsListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const QuickAddScreen()),
+        heroTag: 'items_fab',
+        onPressed: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => const AddItemSheet(),
         ),
         child: const Icon(Icons.add),
       ),

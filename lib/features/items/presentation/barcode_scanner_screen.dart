@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
 import '../data/items_repository.dart';
-import 'quick_add_screen.dart';
+import 'add_item_sheet.dart';
 
 class BarcodeScannerScreen extends ConsumerStatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -102,8 +102,11 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
       );
       if (add == true && mounted) {
         Navigator.of(context).pop();
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const QuickAddScreen()),
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => const AddItemSheet(),
         );
       } else {
         setState(() => _scanned = false);

@@ -72,6 +72,7 @@ class LocationsScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'locations_fab',
         onPressed: () => _showAddLocation(context, ref),
         child: const Icon(Icons.add),
       ),

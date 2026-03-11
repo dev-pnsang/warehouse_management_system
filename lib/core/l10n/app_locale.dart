@@ -48,6 +48,11 @@ class AppStrings {
   String get syncUrlSaved => isVi ? 'Đã lưu URL' : 'URL saved';
   String get syncUrlNotSet => isVi ? 'Chưa cấu hình URL' : 'URL not set';
   String get save => isVi ? 'Lưu' : 'Save';
+  String get itemName => isVi ? 'Tên vật phẩm' : 'Item name';
+  String get itemNameHint => isVi ? 'Nhập tên (tùy chọn)' : 'Enter name (optional)';
+  String get quantity => isVi ? 'Số lượng' : 'Quantity';
+  String get selectLocation => isVi ? 'Vị trí lưu' : 'Storage location';
+  String get noLocation => isVi ? 'Không chọn' : 'None';
 }
 
 final appStringsProvider = Provider<AppStrings>((ref) {

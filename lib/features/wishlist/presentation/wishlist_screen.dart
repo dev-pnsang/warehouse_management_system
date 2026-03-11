@@ -70,6 +70,7 @@ class WishlistScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'wishlist_fab',
         onPressed: () => _showAdd(context, ref),
         child: const Icon(Icons.add),
       ),
