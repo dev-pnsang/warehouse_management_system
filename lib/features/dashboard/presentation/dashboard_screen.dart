@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/l10n/app_locale.dart';
+import '../../../app/main_shell.dart';
 import '../providers/dashboard_providers.dart';
-import '../../items/presentation/items_list_screen.dart';
 import '../../items/presentation/item_detail_screen.dart';
-import '../../categories/presentation/categories_screen.dart';
-import '../../wishlist/presentation/wishlist_screen.dart';
 import '../../items/presentation/quick_add_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -19,9 +19,23 @@ class DashboardScreen extends ConsumerWidget {
     final totalCategories = ref.watch(totalCategoriesProvider);
     final lowStockCount = ref.watch(lowStockCountProvider);
     final recentItems = ref.watch(recentActivityProvider);
+    final s = ref.watch(appStringsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(s.dashboard, style: const TextStyle(color: AppColors.textPrimary)),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.primary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -46,18 +60,15 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
                     _SearchChip(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ItemsListScreen(),
-                        ),
-                      ),
+                      label: s.searchItems,
+                      onTap: () => ref.read(mainTabIndexProvider.notifier).state = 1,
                     ),
                     const SizedBox(height: 24),
                     Row(
                       children: [
                         Expanded(
                           child: _StatCard(
-                            label: 'Total Items',
+                            label: s.totalItems,
                             value: totalItems.when(
                               data: (v) => '$v',
                               loading: () => '—',
@@ -69,7 +80,7 @@ class DashboardScreen extends ConsumerWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: _StatCard(
-                            label: 'Categories',
+                            label: s.totalCategories,
                             value: totalCategories.when(
                               data: (v) => '$v',
                               loading: () => '—',
@@ -82,7 +93,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     _StatCard(
-                      label: 'Low Stock Items',
+                      label: s.lowStock,
                       value: lowStockCount.when(
                         data: (v) => '$v',
                         loading: () => '—',
@@ -96,18 +107,14 @@ class DashboardScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Recent Activity',
+                          s.recentActivity,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 color: AppColors.textPrimary,
                               ),
                         ),
                         TextButton(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const ItemsListScreen(),
-                            ),
-                          ),
-                          child: const Text('View all'),
+                          onPressed: () => ref.read(mainTabIndexProvider.notifier).state = 1,
+                          child: Text(s.viewAll),
                         ),
                       ],
                     ),
@@ -118,13 +125,13 @@ class DashboardScreen extends ConsumerWidget {
             recentItems.when(
               data: (items) {
                 if (items.isEmpty) {
-                  return const SliverToBoxAdapter(
+                  return SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Center(
                         child: Text(
-                          'No items yet. Tap + to add your first item!',
-                          style: TextStyle(color: AppColors.textSecondary),
+                          ref.watch(appStringsProvider).noItemsYet,
+                          style: const TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -181,46 +188,14 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const QuickAddScreen()),
-        ),
-        child: const Icon(Icons.add, size: 32),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textSecondary,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Items'),
-          BottomNavigationBarItem(icon: Icon(Icons.category_outlined), label: 'Categories'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'Wishlist'),
-        ],
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const ItemsListScreen()),
-            );
-          } else if (index == 2) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const CategoriesScreen()),
-            );
-          } else if (index == 3) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const WishlistScreen()),
-            );
-          }
-        },
-      ),
     );
   }
 }
 
 class _SearchChip extends StatelessWidget {
-  const _SearchChip({required this.onTap});
+  const _SearchChip({required this.label, required this.onTap});
 
+  final String label;
   final VoidCallback onTap;
 
   @override
@@ -242,7 +217,7 @@ class _SearchChip extends StatelessWidget {
               Icon(Icons.search, color: AppColors.textSecondary, size: 24),
               const SizedBox(width: 12),
               Text(
-                'Search items...',
+                label,
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
               ),
             ],

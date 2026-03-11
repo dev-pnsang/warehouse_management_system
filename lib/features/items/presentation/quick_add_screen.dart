@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/utils/image_storage.dart';
 import '../../categories/data/categories_repository.dart';
 import '../data/items_repository.dart';
@@ -15,26 +16,44 @@ class QuickAddScreen extends ConsumerStatefulWidget {
 }
 
 class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
-  final ImagePicker _picker = ImagePicker();
   File? _imageFile;
   String? _savedImagePath;
   int _quantity = 1;
   int? _selectedCategoryId;
   bool _saving = false;
+  bool _picking = false;
 
   Future<void> _takePhoto() async {
-    final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
-    if (photo != null) {
-      setState(() {
-        _imageFile = File(photo.path);
-      });
+    if (_picking) return;
+    setState(() => _picking = true);
+    try {
+      final picker = ImagePicker();
+      final xFile = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (xFile != null && mounted) {
+        setState(() {
+          _imageFile = File(xFile.path);
+          _picking = false;
+        });
+      } else if (mounted) {
+        setState(() => _picking = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _picking = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
   Future<void> _save() async {
     if (_savedImagePath == null && _imageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please take a photo first')),
+        SnackBar(content: Text(ref.read(appStringsProvider).pleaseTakePhoto)),
       );
       return;
     }
@@ -53,8 +72,8 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Item saved!'),
+          SnackBar(
+            content: Text(ref.read(appStringsProvider).itemSaved),
             backgroundColor: AppColors.accent,
           ),
         );
@@ -73,14 +92,15 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Quick Add', style: TextStyle(color: Colors.white)),
+        title: Text(s.quickAdd, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -89,25 +109,50 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
           Expanded(
             flex: 2,
             child: GestureDetector(
-              onTap: _takePhoto,
-              child: Container(
-                color: Colors.black,
-                width: double.infinity,
-                child: _imageFile != null
-                    ? Image.file(_imageFile!, fit: BoxFit.contain)
-                    : Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.camera_alt, size: 64, color: Colors.grey[600]),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tap to take photo',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                            ),
-                          ],
+              onTap: _picking ? null : _takePhoto,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_imageFile != null)
+                    Image.file(_imageFile!, fit: BoxFit.cover)
+                  else
+                    Container(
+                      color: Colors.grey[900],
+                      child: Center(
+                        child: _picking
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.camera_alt, size: 72, color: Colors.grey[600]),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    s.takePhoto,
+                                    style: TextStyle(color: Colors.grey[400], fontSize: 18),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    s.pleaseTakePhoto,
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  if (_imageFile != null)
+                    Positioned(
+                      right: 16,
+                      top: 16,
+                      child: IconButton.filled(
+                        onPressed: _picking ? null : _takePhoto,
+                        icon: const Icon(Icons.camera_alt),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                          foregroundColor: Colors.white,
                         ),
                       ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -159,7 +204,7 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
                         builder: (context, snap) {
                           final categories = snap.data ?? [];
                           if (categories.isEmpty) {
-                            return const Text('No categories. Add one in Categories.');
+                            return Text(s.noCategories);
                           }
                           return SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
@@ -197,7 +242,7 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
                               width: 24,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('SAVE INSTANTLY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          : Text(s.saveInstantly, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

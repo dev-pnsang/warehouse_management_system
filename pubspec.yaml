@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.6
   # State management
   flutter_riverpod: ^2.5.1
@@ -19,13 +21,14 @@ dependencies:
   path_provider: ^2.1.2
   path: ^1.9.0
   # Barcode & camera
-  # 6.x dùng Kotlin 2.1.0, dễ xung đột với toolchain hiện tại.
-  # Dùng bản 5.2.3 ổn định hơn cho Kotlin 1.9.x.
   mobile_scanner: 5.2.3
   image_picker: ^1.0.7
   # Utils
   uuid: ^4.3.3
   intl: ^0.19.0
+  # Export
+  excel: ^4.0.6
+  share_plus: ^10.0.2
   # UI
   google_fonts: ^6.2.1
 
