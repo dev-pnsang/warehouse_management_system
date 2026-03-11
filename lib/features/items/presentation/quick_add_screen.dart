@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
 import '../../../core/utils/image_storage.dart';
+import '../../../core/widgets/image_preview_screen.dart';
 import '../../categories/data/categories_repository.dart';
 import '../data/items_repository.dart';
 
@@ -114,7 +115,14 @@ class _QuickAddScreenState extends ConsumerState<QuickAddScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (_imageFile != null)
-                    Image.file(_imageFile!, fit: BoxFit.cover)
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ImagePreviewScreen(file: _imageFile!),
+                        ),
+                      ),
+                      child: Image.file(_imageFile!, fit: BoxFit.cover),
+                    )
                   else
                     Container(
                       color: Colors.grey[900],

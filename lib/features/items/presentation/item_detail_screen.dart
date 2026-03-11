@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/database/app_database.dart'; // Item, ItemHistoryData, Category, Location
+import '../../../core/database/app_database.dart';
+import '../../../core/widgets/image_preview_screen.dart';
 import '../../categories/data/categories_repository.dart';
 import '../../locations/data/locations_repository.dart';
 import '../data/items_repository.dart';
@@ -102,15 +103,26 @@ class _ImageSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final file = File(item.imagePath);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: file.existsSync()
-          ? Image.file(file, height: 220, width: double.infinity, fit: BoxFit.cover)
-          : Container(
-              height: 220,
-              color: AppColors.background,
-              child: const Center(child: Icon(Icons.image_not_supported, size: 48)),
+    return GestureDetector(
+      onTap: () {
+        if (file.existsSync()) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ImagePreviewScreen(file: file),
             ),
+          );
+        }
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: file.existsSync()
+            ? Image.file(file, height: 220, width: double.infinity, fit: BoxFit.cover)
+            : Container(
+                height: 220,
+                color: AppColors.background,
+                child: const Center(child: Icon(Icons.image_not_supported, size: 48)),
+              ),
+      ),
     );
   }
 }

@@ -6,8 +6,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
 import '../../../app/main_shell.dart';
 import '../providers/dashboard_providers.dart';
+import '../../../core/widgets/image_preview_screen.dart';
 import '../../items/presentation/item_detail_screen.dart';
-import '../../items/presentation/quick_add_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -143,21 +143,33 @@ class DashboardScreen extends ConsumerWidget {
                       final item = items[index];
                       final file = File(item.imagePath);
                       return ListTile(
-                        leading: file.existsSync()
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  file,
+                        leading: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            if (file.existsSync()) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ImagePreviewScreen(file: file),
+                                ),
+                              );
+                            }
+                          },
+                          child: file.existsSync()
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    file,
+                                    width: 48,
+                                    height: 48,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const SizedBox(
                                   width: 48,
                                   height: 48,
-                                  fit: BoxFit.cover,
+                                  child: Icon(Icons.image_not_supported, color: AppColors.textSecondary),
                                 ),
-                              )
-                            : const SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: Icon(Icons.image_not_supported, color: AppColors.textSecondary),
-                              ),
+                        ),
                         title: Text(item.name ?? 'Unnamed'),
                         subtitle: Text('Qty: ${item.quantity}'),
                         onTap: () => Navigator.of(context).push(

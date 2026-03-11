@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/database/app_database.dart';
 import '../../categories/data/categories_repository.dart';
 import '../data/items_repository.dart';
+import '../../../core/widgets/image_preview_screen.dart';
 import 'item_detail_screen.dart';
 import 'quick_add_screen.dart';
 import 'barcode_scanner_screen.dart';
@@ -152,16 +153,28 @@ class _ItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: file.existsSync()
-              ? Image.file(file, width: 56, height: 56, fit: BoxFit.cover)
-              : Container(
-                  width: 56,
-                  height: 56,
-                  color: AppColors.background,
-                  child: const Icon(Icons.image_not_supported),
+        leading: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            if (file.existsSync()) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ImagePreviewScreen(file: file),
                 ),
+              );
+            }
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: file.existsSync()
+                ? Image.file(file, width: 56, height: 56, fit: BoxFit.cover)
+                : Container(
+                    width: 56,
+                    height: 56,
+                    color: AppColors.background,
+                    child: const Icon(Icons.image_not_supported),
+                  ),
+          ),
         ),
         title: Text(
           item.name ?? 'Unnamed',
