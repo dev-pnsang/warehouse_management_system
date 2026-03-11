@@ -9,7 +9,8 @@ import '../../categories/data/categories_repository.dart';
 import '../../locations/data/locations_repository.dart';
 import '../data/items_repository.dart';
 
-/// Bottom sheet to add item: take photo on current screen, then enter name, quantity, category, location.
+/// Bottom sheet to add item: take photo (image_picker), then enter name, quantity, category, location.
+/// Ghi chú: Hiện dùng image_picker (mở camera hệ thống) vì package camera 0.11 lỗi build với Flutter mới (camera_android_camerax SurfaceProducer). Khi nâng Flutter 3.41+ (Dart 3.9+) có thể dùng camera: ^0.12.0 để có preview ngay trong sheet.
 class AddItemSheet extends ConsumerStatefulWidget {
   const AddItemSheet({super.key});
 
@@ -23,8 +24,8 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   int _quantity = 1;
   int? _selectedCategoryId;
   int? _selectedLocationId;
-  bool _picking = false;
   bool _saving = false;
+  bool _picking = false;
 
   @override
   void dispose() {
@@ -33,8 +34,9 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   }
 
   Future<void> _takePhoto() async {
-    if (_picking) return;
+    if (_picking || !mounted) return;
     setState(() => _picking = true);
+    debugPrint('[AddItemSheet] Mở camera (image_picker)...');
     try {
       final picker = ImagePicker();
       final xFile = await picker.pickImage(
@@ -42,6 +44,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         imageQuality: 85,
       );
       if (xFile != null && mounted) {
+        debugPrint('[AddItemSheet] Đã chụp: ${xFile.path}');
         setState(() {
           _imageFile = File(xFile.path);
           _picking = false;
@@ -49,14 +52,19 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
       } else if (mounted) {
         setState(() => _picking = false);
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AddItemSheet] Lỗi camera: $e\n$st');
       if (mounted) {
         setState(() => _picking = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('Lỗi camera: $e'), backgroundColor: AppColors.error),
         );
       }
     }
+  }
+
+  void _retakePhoto() {
+    setState(() => _imageFile = null);
   }
 
   Future<void> _save() async {
@@ -133,13 +141,12 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                       ),
                 ),
                 const SizedBox(height: 16),
-                // Photo area: tap to take photo (no navigation)
                 GestureDetector(
                   onTap: _picking ? null : _takePhoto,
                   child: Container(
-                    height: 160,
+                    height: 200,
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: Colors.black87,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                     ),
@@ -154,27 +161,31 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                                   right: 8,
                                   top: 8,
                                   child: IconButton.filled(
-                                    onPressed: _picking ? null : _takePhoto,
+                                    onPressed: _retakePhoto,
                                     icon: const Icon(Icons.camera_alt, color: Colors.white),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: Colors.black54,
-                                    ),
+                                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
                                   ),
                                 ),
                               ],
                             )
                           : Center(
                               child: _picking
-                                  ? const CircularProgressIndicator()
+                                  ? const Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircularProgressIndicator(color: Colors.white),
+                                        SizedBox(height: 12),
+                                        Text('Đang mở camera...', style: TextStyle(color: Colors.white70)),
+                                      ],
+                                    )
                                   : Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.camera_alt, size: 48, color: Colors.grey[600]),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          s.takePhoto,
-                                          style: TextStyle(color: Colors.grey[700], fontSize: 16),
-                                        ),
+                                        Icon(Icons.camera_alt, size: 56, color: Colors.grey[400]),
+                                        const SizedBox(height: 12),
+                                        Text(s.takePhoto, style: TextStyle(color: Colors.grey[400], fontSize: 16)),
+                                        const SizedBox(height: 4),
+                                        Text('Chạm để chụp ảnh', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                                       ],
                                     ),
                             ),
@@ -182,7 +193,6 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Name
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
@@ -194,7 +204,6 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Quantity
                 Row(
                   children: [
                     Text(s.quantity, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
@@ -216,7 +225,6 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Categories
                 FutureBuilder(
                   future: ref.read(categoriesRepositoryProvider).getAll(),
                   builder: (context, snap) {
@@ -246,7 +254,6 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   },
                 ),
                 const SizedBox(height: 12),
-                // Location
                 FutureBuilder(
                   future: ref.read(locationsRepositoryProvider).getAll(),
                   builder: (context, snap) {

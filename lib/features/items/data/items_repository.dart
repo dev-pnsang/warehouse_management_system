@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
@@ -26,6 +27,19 @@ class ItemsRepository {
 
   Future<int> getTotalCount() => _dao.getTotalCount();
   Future<int> getLowStockCount(int threshold) => _dao.getLowStockCount(threshold);
+
+  /// Real-time stream: tổng số item (cập nhật khi thêm/xóa/sửa).
+  Stream<int> watchTotalCount() => _dao.watchAll().map((l) => l.length);
+
+  /// Real-time stream: số item dưới ngưỡng low stock.
+  Stream<int> watchLowStockCount(int threshold) =>
+      _dao.watchAll().map((l) => l.where((i) => i.quantity < threshold).length);
+
+  /// Real-time stream: danh sách item gần đây (theo updatedAt).
+  Stream<List<Item>> watchRecent(int limit) => _dao.watchAll().map((list) {
+        final sorted = List<Item>.from(list)..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        return sorted.take(limit).toList();
+      });
 
   Future<List<Item>> getRecent(int limit) async {
     final all = await _dao.getAll();

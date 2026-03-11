@@ -25,6 +25,7 @@ class AppStrings {
   String get saveInstantly => isVi ? 'LƯU NGAY' : 'SAVE INSTANTLY';
   String get itemSaved => isVi ? 'Đã lưu!' : 'Item saved!';
   String get takePhoto => isVi ? 'Chụp ảnh' : 'Take photo';
+  String get capture => isVi ? 'Chụp' : 'Capture';
   String get pleaseTakePhoto => isVi ? 'Hãy chụp ảnh trước' : 'Please take a photo first';
   String get noCategories => isVi ? 'Chưa có danh mục. Thêm trong Danh mục.' : 'No categories. Add one in Categories.';
   String get youOwnThis => isVi ? 'Bạn đã có vật phẩm này!' : 'You already own this item!';

@@ -23,6 +23,7 @@ dependencies:
   # Barcode & camera
   mobile_scanner: 5.2.3
   image_picker: ^1.0.7
+  # camera: ^0.11.0  # Tạm bỏ: camera_android_camerax 0.6.8 lỗi build với Flutter mới (SurfaceProducer.Callback). Dùng image_picker chụp ảnh. Khi nâng Flutter 3.41+ (Dart 3.9+) có thể dùng camera: ^0.12.0 để có preview trong app.
   # Utils
   uuid: ^4.3.3
   image: ^4.3.0
