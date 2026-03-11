@@ -1,0 +1,116 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../database/app_database.dart';
+import '../providers/database_provider.dart';
+
+const _keySyncUrl = 'google_sheets_apps_script_url';
+
+final googleSheetsSyncServiceProvider =
+    Provider<GoogleSheetsSyncService>((ref) {
+  return GoogleSheetsSyncService(ref.watch(databaseProvider));
+});
+
+/// Gửi dữ liệu Items + Categories lên Google Sheets thông qua Apps Script Web App.
+/// URL được lưu trong Cài đặt (SharedPreferences), không hardcode trong code.
+class GoogleSheetsSyncService {
+  GoogleSheetsSyncService(this._db);
+
+  final AppDatabase _db;
+
+  Future<String?> getSyncUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keySyncUrl);
+  }
+
+  Future<void> setSyncUrl(String url) async {
+    final trimmed = url.trim();
+    final prefs = await SharedPreferences.getInstance();
+    if (trimmed.isEmpty) {
+      await prefs.remove(_keySyncUrl);
+    } else {
+      await prefs.setString(_keySyncUrl, trimmed);
+    }
+  }
+
+  /// Log ra Debug Console (VS Code, Android Studio) và adb logcat / Xcode console.
+  static void _log(String message) {
+    debugPrint('[Sync] $message');
+  }
+
+  Future<void> syncViaAppsScript() async {
+    _log('Bắt đầu đồng bộ...');
+    final url = await getSyncUrl();
+    if (url == null || url.isEmpty) {
+      _log('Lỗi: Chưa cấu hình URL đồng bộ.');
+      throw StateError('Chưa cấu hình URL đồng bộ. Vào Cài đặt → Cấu hình URL đồng bộ.');
+    }
+    final urlSuffix = url.length > 40 ? '...${url.substring(url.length - 40)}' : url;
+    _log('URL: $urlSuffix');
+
+    final items = await _db.itemsDao.getAll();
+    final categories = await _db.categoriesDao.getAll();
+    _log('Đã lấy dữ liệu: ${items.length} items, ${categories.length} categories');
+    final catMap = {for (var c in categories) c.id: c.name};
+
+    final payload = <String, dynamic>{
+      'items': [
+        for (final i in items)
+          {
+            'id': i.id,
+            'name': i.name ?? '',
+            'quantity': i.quantity,
+            'category':
+                i.categoryId != null ? (catMap[i.categoryId] ?? '') : '',
+            'barcode': i.barcode ?? '',
+            'notes': i.notes ?? '',
+            'createdAt': i.createdAt.toIso8601String(),
+          },
+      ],
+      'categories': [
+        for (final c in categories)
+          {
+            'id': c.id,
+            'name': c.name,
+          },
+      ],
+    };
+    final bodyBytes = utf8.encode(jsonEncode(payload));
+    _log('Payload size: ${bodyBytes.length} bytes');
+
+    http.Response resp;
+    try {
+      _log('Đang gửi POST...');
+      resp = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: bodyBytes,
+      );
+
+      // Apps Script trả 302; URL đích (script.googleusercontent.com) chỉ chấp nhận GET.
+      // Dữ liệu đã được gửi bằng POST ở trên; GET theo Location để lấy response của script.
+      if (resp.statusCode == 301 || resp.statusCode == 302) {
+        final location = resp.headers['location'];
+        _log('Nhận redirect ${resp.statusCode}, GET theo Location để lấy kết quả.');
+        if (location != null && location.isNotEmpty) {
+          resp = await http.get(Uri.parse(location));
+        }
+      }
+    } catch (e, st) {
+      _log('Lỗi gửi request: $e');
+      _log('Stack: $st');
+      rethrow;
+    }
+
+    _log('Response: statusCode=${resp.statusCode}, body=${resp.body.length > 200 ? '${resp.body.substring(0, 200)}...' : resp.body}');
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      _log('Lỗi HTTP ${resp.statusCode}: ${resp.body}');
+      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
+    }
+    _log('Đồng bộ thành công.');
+  }
+}

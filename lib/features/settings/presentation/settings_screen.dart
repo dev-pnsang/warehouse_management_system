@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
 import '../../../core/export/export_service.dart';
+import '../../../core/sheets/google_sheets_sync_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -39,9 +40,83 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(s.exportExcel, style: const TextStyle(fontWeight: FontWeight.w600)),
             onTap: () => _exportExcel(context, ref),
           ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.link),
+            title: Text(s.syncUrlSetting, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const _SyncUrlSubtitle(),
+            onTap: () => _showSyncUrlDialog(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud_upload),
+            title: Text(s.syncToGoogleSheets, style: const TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () => _syncToGoogleSheets(context, ref),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _showSyncUrlDialog(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
+    final service = ref.read(googleSheetsSyncServiceProvider);
+    final current = await service.getSyncUrl();
+    if (!context.mounted) return;
+    final controller = TextEditingController(text: current ?? '');
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.syncUrlSetting),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: s.syncUrlHint,
+            border: const OutlineInputBorder(),
+          ),
+          maxLines: 2,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.back),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await service.setSyncUrl(controller.text);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(s.syncUrlSaved), backgroundColor: AppColors.accent),
+                );
+              }
+            },
+            child: Text(s.save),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _syncToGoogleSheets(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
+    try {
+      await ref.read(googleSheetsSyncServiceProvider).syncViaAppsScript();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(s.syncToSheetsSuccess),
+            backgroundColor: AppColors.accent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${s.syncToSheetsError}: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
@@ -108,5 +183,25 @@ class SettingsScreen extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _SyncUrlSubtitle extends ConsumerWidget {
+  const _SyncUrlSubtitle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.read(appStringsProvider);
+    return FutureBuilder<String?>(
+      future: ref.read(googleSheetsSyncServiceProvider).getSyncUrl(),
+      builder: (context, snap) {
+        final style = TextStyle(fontSize: 12, color: Colors.grey[600]);
+        if (!snap.hasData) return Text(s.syncUrlHint, style: style);
+        final url = snap.data;
+        if (url == null || url.isEmpty) return Text(s.syncUrlNotSet, style: style);
+        final display = url.length > 50 ? '${url.substring(0, 50)}...' : url;
+        return Text(display, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
+      },
+    );
   }
 }

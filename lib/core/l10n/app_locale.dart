@@ -38,6 +38,16 @@ class AppStrings {
   String get settings => isVi ? 'Cài đặt' : 'Settings';
   String get exportSuccess => isVi ? 'Đã xuất file' : 'File exported';
   String get back => isVi ? 'Quay lại' : 'Back';
+  String get syncToGoogleSheets => isVi ? 'Đồng bộ lên Google Sheets' : 'Sync to Google Sheets';
+  String get syncToSheetsSuccess => isVi ? 'Đã đồng bộ lên Google Sheets (Apps Script)' : 'Synced to Google Sheets (Apps Script)';
+  String get syncToSheetsSignInRequired => isVi ? 'Cần cấu hình URL Apps Script trong mã nguồn' : 'Configure Apps Script URL in code first';
+  String get syncToSheetsError => isVi ? 'Lỗi đồng bộ' : 'Sync error';
+  String get open => isVi ? 'Mở' : 'Open';
+  String get syncUrlSetting => isVi ? 'Cấu hình URL đồng bộ' : 'Sync URL';
+  String get syncUrlHint => isVi ? 'Dán URL Web App từ Google Apps Script' : 'Paste Web App URL from Google Apps Script';
+  String get syncUrlSaved => isVi ? 'Đã lưu URL' : 'URL saved';
+  String get syncUrlNotSet => isVi ? 'Chưa cấu hình URL' : 'URL not set';
+  String get save => isVi ? 'Lưu' : 'Save';
 }
 
 final appStringsProvider = Provider<AppStrings>((ref) {

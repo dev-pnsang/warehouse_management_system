@@ -33,6 +33,20 @@ flutter run
 
 **iOS**: Đã cấu hình quyền camera và photo library trong `Info.plist`.
 
+## Đồng bộ Google Sheets
+
+Trong **Cài đặt** có mục **Đồng bộ lên Google Sheets**. Lần đầu chọn sẽ đăng nhập Google (OAuth), sau đó app tạo một spreadsheet tên **"SwiftKeep Data"** trong tài khoản của bạn với 2 sheet: **Items** (id, name, quantity, category, barcode, notes, created) và **Categories** (id, name). Các lần đồng bộ sau sẽ ghi đè dữ liệu lên cùng file đó.
+
+**Cấu hình (bắt buộc):**
+
+1. Vào [Google Cloud Console](https://console.cloud.google.com/) → tạo project (hoặc chọn project có sẵn).
+2. Bật **Google Sheets API**: APIs & Services → Enable APIs → tìm "Google Sheets API" → Enable.
+3. Tạo OAuth 2.0 Client ID:
+   - **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**.
+   - Application type: **Android** (package name: `com.swiftkeep.swift_keep`, lấy SHA-1 bằng `cd android && ./gradlew signingReport`).
+   - Tạo thêm **iOS** client nếu chạy trên iPhone (bundle ID trong Xcode).
+4. Không cần nhúng file JSON key vào app; Google Sign-In dùng client ID đã đăng ký theo platform.
+
 ## Cấu trúc thư mục `lib/`
 
 ```

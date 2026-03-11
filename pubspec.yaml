@@ -29,6 +29,9 @@ dependencies:
   # Export
   excel: ^4.0.6
   share_plus: ^10.0.2
+  # Networking
+  http: ^1.2.2
+  shared_preferences: ^2.2.2
   # UI
   google_fonts: ^6.2.1
 
