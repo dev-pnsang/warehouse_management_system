@@ -1,7 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-final localeProvider = StateProvider<Locale>((ref) => const Locale('en'));
+const _keyLocale = 'app_locale';
+
+final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
+  return LocaleNotifier();
+});
+
+/// Lưu/khôi phục ngôn ngữ qua SharedPreferences để lần sau mở app không mất.
+class LocaleNotifier extends StateNotifier<Locale> {
+  LocaleNotifier() : super(const Locale('vi')) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final code = prefs.getString(_keyLocale) ?? 'vi';
+      if (code == 'vi' || code == 'en') {
+        state = Locale(code);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    state = locale;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyLocale, locale.languageCode);
+    } catch (_) {}
+  }
+}
 
 class AppStrings {
   AppStrings(this.locale);

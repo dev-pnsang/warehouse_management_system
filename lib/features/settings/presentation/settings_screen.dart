@@ -273,7 +273,7 @@ class SettingsScreen extends ConsumerWidget {
               title: Text(s.english),
               leading: const Icon(Icons.language),
               onTap: () {
-                ref.read(localeProvider.notifier).state = const Locale('en');
+                ref.read(localeProvider.notifier).setLocale(const Locale('en'));
                 Navigator.pop(ctx);
               },
             ),
@@ -281,7 +281,7 @@ class SettingsScreen extends ConsumerWidget {
               title: Text(s.vietnamese),
               leading: const Icon(Icons.language),
               onTap: () {
-                ref.read(localeProvider.notifier).state = const Locale('vi');
+                ref.read(localeProvider.notifier).setLocale(const Locale('vi'));
                 Navigator.pop(ctx);
               },
             ),
