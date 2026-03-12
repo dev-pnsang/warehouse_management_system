@@ -47,7 +47,9 @@ function doPost(e) {
     } catch (imgErr) {
       Logger.log("getImages/remove: " + imgErr);
     }
-    itemsSheet.setRowHeights(1, Math.max(items.length + 1, 1), 80);
+    // Không set toàn bộ hàng = 80px (gây row bị to). Chỉ hàng có ảnh mới cần cao.
+    var DEFAULT_ROW_HEIGHT = 21; // px – gần mặc định Sheets
+    var ROW_HEIGHT_WITH_IMAGE = 80; // đủ chứa ảnh ~70px + padding
     // 9 cột text + ảnh ở cột 9
     itemsSheet
       .getRange(1, 1, 1, 9)
@@ -99,6 +101,16 @@ function doPost(e) {
           }
         }
       }
+      // Header gọn; từng hàng dữ liệu: chỉ cao khi có ảnh
+      itemsSheet.setRowHeight(1, DEFAULT_ROW_HEIGHT);
+      for (var hr = 0; hr < items.length; hr++) {
+        itemsSheet.setRowHeight(
+          hr + 2,
+          items[hr].imageBase64 ? ROW_HEIGHT_WITH_IMAGE : DEFAULT_ROW_HEIGHT,
+        );
+      }
+    } else {
+      itemsSheet.setRowHeight(1, DEFAULT_ROW_HEIGHT);
     }
 
     var catSheet =
