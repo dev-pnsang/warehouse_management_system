@@ -54,6 +54,23 @@ class AppStrings {
   String get quantity => isVi ? 'Số lượng' : 'Quantity';
   String get selectLocation => isVi ? 'Vị trí lưu' : 'Storage location';
   String get noLocation => isVi ? 'Không chọn' : 'None';
+  String get backup => isVi ? 'Sao lưu (ZIP)' : 'Backup (ZIP)';
+  String get backupDesc => isVi ? 'Database + ảnh, chia sẻ hoặc lưu' : 'Database + images, share or save';
+  String get restore => isVi ? 'Khôi phục từ ZIP' : 'Restore from ZIP';
+  String get restoreDesc => isVi ? 'Chọn file .zip đã backup' : 'Pick a backup .zip file';
+  String get backupSuccess => isVi ? 'Đã tạo file backup' : 'Backup file created';
+  String get backupSavedAt => isVi ? 'File đã lưu tại:' : 'File saved at:';
+  String get copyPath => isVi ? 'Sao chép đường dẫn' : 'Copy path';
+  String get pathCopied => isVi ? 'Đã copy đường dẫn' : 'Path copied';
+  String get restoreSuccess => isVi ? 'Đã khôi phục. Màn hình sẽ cập nhật.' : 'Restored. Screen will refresh.';
+  String get restoreConfirm => isVi ? 'Khôi phục sẽ thay toàn bộ dữ liệu và ảnh hiện tại. Tiếp tục?' : 'Restore will replace all current data and images. Continue?';
+  String get backupCreating => isVi ? 'Đang tạo backup...' : 'Creating backup...';
+  String get restorePicking => isVi ? 'Chọn file backup (.zip)' : 'Pick backup file (.zip)';
+  String get backupFolderHint => isVi ? 'File được lưu vào Downloads/SwiftKeepBackups (external storage), bạn mở File Manager → Tải xuống → SwiftKeepBackups để copy/sao chép.' : 'File is saved to Downloads/SwiftKeepBackups (external storage). Open File Manager → Downloads → SwiftKeepBackups to access or copy.';
+  String get shareAgain => isVi ? 'Chia sẻ' : 'Share';
+  String get saveToFolder => isVi ? 'Lưu vào thư mục (Downloads, ...)' : 'Save to folder (Downloads, ...)';
+  String get pickFolderToSave => isVi ? 'Chọn thư mục để lưu file backup (vd: Downloads)' : 'Pick folder to save backup (e.g. Downloads)';
+  String get savedToAccessible => isVi ? 'Đã lưu bản copy vào thư mục bạn chọn. Bạn có thể mở bằng File Manager.' : 'Copy saved to the folder you chose. You can open it in File Manager.';
 }
 
 final appStringsProvider = Provider<AppStrings>((ref) {

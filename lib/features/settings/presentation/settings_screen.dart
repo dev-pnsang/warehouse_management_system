@@ -1,9 +1,16 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
 import '../../../core/export/export_service.dart';
+import '../../../core/backup_restore/backup_restore_service.dart';
 import '../../../core/sheets/google_sheets_sync_service.dart';
+import '../../dashboard/providers/dashboard_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -39,6 +46,19 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             title: Text(s.exportExcel, style: const TextStyle(fontWeight: FontWeight.w600)),
             onTap: () => _exportExcel(context, ref),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.backup),
+            title: Text(s.backup, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(s.backupDesc, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            onTap: () => _createBackup(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.restore),
+            title: Text(s.restore, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(s.restoreDesc, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            onTap: () => _restoreFromBackup(context, ref),
           ),
           const Divider(),
           ListTile(
@@ -147,6 +167,145 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _createBackup(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
+    try {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.backupCreating), duration: const Duration(seconds: 1)),
+        );
+      }
+      final zipPath = await ref.read(backupRestoreServiceProvider).createBackupZip();
+      if (!context.mounted) return;
+      await Share.shareXFiles([XFile(zipPath)], text: 'SwiftKeep backup');
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(s.backupSuccess),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.backupSavedAt, style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                SelectableText(zipPath, style: TextStyle(fontSize: 12, color: Colors.grey[800])),
+                const SizedBox(height: 10),
+                Text(s.backupFolderHint, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: zipPath));
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(s.pathCopied), backgroundColor: AppColors.accent),
+                  );
+                }
+              },
+              child: Text(s.copyPath),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await Share.shareXFiles([XFile(zipPath)], text: 'SwiftKeep backup');
+              },
+              child: Text(s.shareAgain),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final selectedDir = await FilePicker.platform.getDirectoryPath(dialogTitle: s.pickFolderToSave);
+                if (selectedDir == null || selectedDir.isEmpty) return;
+                try {
+                  final zipFile = File(zipPath);
+                  if (!await zipFile.exists()) return;
+                  final destPath = p.join(selectedDir, p.basename(zipPath));
+                  await zipFile.copy(destPath);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(s.savedToAccessible),
+                        backgroundColor: AppColors.accent,
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Text(s.saveToFolder),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _restoreFromBackup(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+      withData: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null || path.isEmpty) return;
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.restore),
+        content: Text(s.restoreConfirm),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.back)),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.restore),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(backupRestoreServiceProvider).restoreFromZip(path);
+      ref.invalidate(totalItemsProvider);
+      ref.invalidate(totalCategoriesProvider);
+      ref.invalidate(lowStockCountProvider);
+      ref.invalidate(recentActivityProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.restoreSuccess), backgroundColor: AppColors.accent),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
