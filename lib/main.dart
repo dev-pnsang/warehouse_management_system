@@ -21,7 +21,7 @@ class SwiftKeepApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
     return MaterialApp(
-      title: 'SwiftKeep',
+      title: 'Inventory Management',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       locale: locale,

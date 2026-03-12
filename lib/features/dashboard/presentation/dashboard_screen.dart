@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
+import '../../../core/preferences/user_display_name_provider.dart';
 import '../../../app/main_shell.dart';
 import '../providers/dashboard_providers.dart';
 import '../../../core/widgets/image_preview_screen.dart';
@@ -24,6 +24,14 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Image.asset(
+            'assets/icons/logo.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(Icons.inventory_2, color: AppColors.primary),
+          ),
+        ),
         title: Text(s.dashboard, style: const TextStyle(color: AppColors.textPrimary)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.primary,
@@ -46,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hello, ${AppConstants.defaultUserName}!',
+                      'Hello, ${displayNameOrDefault(ref.watch(userDisplayNameProvider))}!',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             color: AppColors.textPrimary,
                           ),

@@ -46,6 +46,17 @@ dev_dependencies:
   build_runner: ^2.4.8
   drift_dev: ^2.16.0
   riverpod_generator: ^2.3.9
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
+
+# Tạo icon launcher (màn hình chính, app drawer) từ assets/icons/logo.png
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/logo.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true  # App Store không cho icon có nền trong suốt

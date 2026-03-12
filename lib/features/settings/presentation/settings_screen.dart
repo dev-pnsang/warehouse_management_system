@@ -9,6 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
 import '../../../core/export/export_service.dart';
 import '../../../core/backup_restore/backup_restore_service.dart';
+import '../../../core/preferences/user_display_name_provider.dart';
 import '../../../core/sheets/google_sheets_sync_service.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 
@@ -32,6 +33,17 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: Text(s.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(
+              displayNameOrDefault(ref.watch(userDisplayNameProvider)),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showDisplayNameDialog(context, ref),
+          ),
+          const Divider(),
           ListTile(
             title: Text(s.language, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(ref.watch(localeProvider).languageCode == 'vi' ? s.vietnamese : s.english),
@@ -143,10 +155,55 @@ class SettingsScreen extends ConsumerWidget {
     await _syncToGoogleSheets(context, ref, includeImages: includeImages);
   }
 
+  /// Hiển thị dialog không dismiss + thanh tiến trình trong lúc chờ [future].
+  Future<T> _withProgress<T>(
+    BuildContext context,
+    WidgetRef ref,
+    String message,
+    Future<T> future,
+  ) async {
+    if (!context.mounted) return future;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: AppColors.surface,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const LinearProgressIndicator(),
+              const SizedBox(height: 20),
+              Text(message, style: const TextStyle(color: AppColors.textPrimary)),
+              const SizedBox(height: 8),
+              Text(
+                ref.read(appStringsProvider).pleaseWait,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    try {
+      return await future;
+    } finally {
+      if (context.mounted) navigator.pop();
+    }
+  }
+
   Future<void> _syncToGoogleSheets(BuildContext context, WidgetRef ref, {required bool includeImages}) async {
     final s = ref.read(appStringsProvider);
     try {
-      await ref.read(googleSheetsSyncServiceProvider).syncViaAppsScript(includeImages: includeImages);
+      await _withProgress(
+        context,
+        ref,
+        s.syncInProgress,
+        ref.read(googleSheetsSyncServiceProvider).syncViaAppsScript(includeImages: includeImages),
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -162,6 +219,46 @@ class SettingsScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<void> _showDisplayNameDialog(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
+    final notifier = ref.read(userDisplayNameProvider.notifier);
+    final current = displayNameOrDefault(ref.read(userDisplayNameProvider));
+    if (!context.mounted) return;
+    final controller = TextEditingController(text: current);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.displayName),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: s.displayNameHint,
+            border: const OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.back),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await notifier.setDisplayName(controller.text);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(s.displayNameSaved), backgroundColor: AppColors.accent),
+                );
+              }
+            },
+            child: Text(s.save),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showLanguagePicker(BuildContext context, WidgetRef ref) {
@@ -197,14 +294,14 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _createBackup(BuildContext context, WidgetRef ref) async {
     final s = ref.read(appStringsProvider);
     try {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.backupCreating), duration: const Duration(seconds: 1)),
-        );
-      }
-      final zipPath = await ref.read(backupRestoreServiceProvider).createBackupZip();
+      final zipPath = await _withProgress(
+        context,
+        ref,
+        s.backupCreating,
+        ref.read(backupRestoreServiceProvider).createBackupZip(),
+      );
       if (!context.mounted) return;
-      await Share.shareXFiles([XFile(zipPath)], text: 'SwiftKeep backup');
+      await Share.shareXFiles([XFile(zipPath)], text: 'Inventory Management backup');
       if (!context.mounted) return;
       await showDialog<void>(
         context: context,
@@ -239,7 +336,7 @@ class SettingsScreen extends ConsumerWidget {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                await Share.shareXFiles([XFile(zipPath)], text: 'SwiftKeep backup');
+                await Share.shareXFiles([XFile(zipPath)], text: 'Inventory Management backup');
               },
               child: Text(s.shareAgain),
             ),
@@ -314,7 +411,12 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
-      await ref.read(backupRestoreServiceProvider).restoreFromZip(path);
+      await _withProgress(
+        context,
+        ref,
+        s.restoreInProgress,
+        ref.read(backupRestoreServiceProvider).restoreFromZip(path),
+      );
       ref.invalidate(totalItemsProvider);
       ref.invalidate(totalCategoriesProvider);
       ref.invalidate(lowStockCountProvider);
@@ -334,12 +436,18 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
     try {
-      final path = await ref.read(exportServiceProvider).exportCsv();
+      final path = await _withProgress(
+        context,
+        ref,
+        s.exportInProgress,
+        ref.read(exportServiceProvider).exportCsv(),
+      );
       await ref.read(exportServiceProvider).shareFile(path);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ref.read(appStringsProvider).exportSuccess), backgroundColor: AppColors.accent),
+          SnackBar(content: Text(s.exportSuccess), backgroundColor: AppColors.accent),
         );
       }
     } catch (e) {
@@ -352,12 +460,18 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _exportExcel(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
     try {
-      final path = await ref.read(exportServiceProvider).exportExcel();
+      final path = await _withProgress(
+        context,
+        ref,
+        s.exportInProgress,
+        ref.read(exportServiceProvider).exportExcel(),
+      );
       await ref.read(exportServiceProvider).shareFile(path);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ref.read(appStringsProvider).exportSuccess), backgroundColor: AppColors.accent),
+          SnackBar(content: Text(s.exportSuccess), backgroundColor: AppColors.accent),
         );
       }
     } catch (e) {

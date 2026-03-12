@@ -8,7 +8,7 @@ class AppStrings {
   final Locale locale;
   bool get isVi => locale.languageCode == 'vi';
 
-  String get appName => 'SwiftKeep';
+  String get appName => 'Inventory Management';
   String get dashboard => isVi ? 'Tổng quan' : 'Dashboard';
   String get items => isVi ? 'Vật phẩm' : 'Items';
   String get categories => isVi ? 'Danh mục' : 'Categories';
@@ -72,12 +72,20 @@ class AppStrings {
   String get restoreSuccess => isVi ? 'Đã khôi phục. Màn hình sẽ cập nhật.' : 'Restored. Screen will refresh.';
   String get restoreConfirm => isVi ? 'Khôi phục sẽ thay toàn bộ dữ liệu và ảnh hiện tại. Tiếp tục?' : 'Restore will replace all current data and images. Continue?';
   String get backupCreating => isVi ? 'Đang tạo backup...' : 'Creating backup...';
+  /// Thanh tiến trình – đang chạy thao tác (sync / backup / restore / export)
+  String get pleaseWait => isVi ? 'Vui lòng đợi...' : 'Please wait...';
+  String get syncInProgress => isVi ? 'Đang đồng bộ lên Google Sheets...' : 'Syncing to Google Sheets...';
+  String get restoreInProgress => isVi ? 'Đang khôi phục dữ liệu...' : 'Restoring data...';
+  String get exportInProgress => isVi ? 'Đang xuất file...' : 'Exporting...';
   String get restorePicking => isVi ? 'Chọn file backup (.zip)' : 'Pick backup file (.zip)';
   String get backupFolderHint => isVi ? 'File được lưu vào Downloads/SwiftKeepBackups (external storage), bạn mở File Manager → Tải xuống → SwiftKeepBackups để copy/sao chép.' : 'File is saved to Downloads/SwiftKeepBackups (external storage). Open File Manager → Downloads → SwiftKeepBackups to access or copy.';
   String get shareAgain => isVi ? 'Chia sẻ' : 'Share';
   String get saveToFolder => isVi ? 'Lưu vào thư mục (Downloads, ...)' : 'Save to folder (Downloads, ...)';
   String get pickFolderToSave => isVi ? 'Chọn thư mục để lưu file backup (vd: Downloads)' : 'Pick folder to save backup (e.g. Downloads)';
   String get savedToAccessible => isVi ? 'Đã lưu bản copy vào thư mục bạn chọn. Bạn có thể mở bằng File Manager.' : 'Copy saved to the folder you chose. You can open it in File Manager.';
+  String get displayName => isVi ? 'Tên hiển thị' : 'Display name';
+  String get displayNameHint => isVi ? 'Tên hiển thị trên màn hình chính (vd: Alex)' : 'Name shown on home screen (e.g. Alex)';
+  String get displayNameSaved => isVi ? 'Đã lưu tên hiển thị' : 'Display name saved';
 }
 
 final appStringsProvider = Provider<AppStrings>((ref) {

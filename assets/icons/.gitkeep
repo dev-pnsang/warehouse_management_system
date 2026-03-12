@@ -1,0 +1,2 @@
+# Thư mục chứa icon/image assets (PNG, SVG, ...).
+# Thêm file icon vào đây và khai báo trong pubspec.yaml → flutter → assets.
