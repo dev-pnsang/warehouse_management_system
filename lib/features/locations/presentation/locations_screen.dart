@@ -83,6 +83,7 @@ class LocationsScreen extends ConsumerWidget {
     final controller = TextEditingController();
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
         child: Padding(
@@ -108,7 +109,10 @@ class LocationsScreen extends ConsumerWidget {
           ),
         ),
       ),
-    ).then((_) => controller.dispose());
+    ).then((_) {
+      // Dispose sau khi sheet đã đóng hẳn, tránh "used after being disposed"
+      WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+    });
   }
 
   void _submitLocation(
@@ -134,6 +138,7 @@ class LocationsScreen extends ConsumerWidget {
     final controller = TextEditingController(text: loc.name);
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
         child: Padding(
@@ -167,7 +172,9 @@ class LocationsScreen extends ConsumerWidget {
           ),
         ),
       ),
-    ).then((_) => controller.dispose());
+    ).then((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+    });
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, Location loc) async {
