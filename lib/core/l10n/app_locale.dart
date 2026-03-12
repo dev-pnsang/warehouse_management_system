@@ -43,6 +43,13 @@ class AppStrings {
   String get syncToSheetsSuccess => isVi ? 'Đã đồng bộ lên Google Sheets (Apps Script)' : 'Synced to Google Sheets (Apps Script)';
   String get syncToSheetsSignInRequired => isVi ? 'Cần cấu hình URL Apps Script trong mã nguồn' : 'Configure Apps Script URL in code first';
   String get syncToSheetsError => isVi ? 'Lỗi đồng bộ' : 'Sync error';
+  String get syncWithImages => isVi ? 'Đồng bộ có ảnh (tối ~40 item)' : 'Sync with images (~40 items max)';
+  String get syncWithoutImages => isVi ? 'Chỉ danh sách (không ảnh, ít dung lượng)' : 'List only (no images, smaller payload)';
+  String get syncSheetsHint => isVi ? 'Đồng bộ lên sheet có cột Position. Hỏi có gửi kèm ảnh mỗi lần sync.' : 'Sync includes Position column. You are asked whether to include images each time.';
+  String get syncAskImages =>
+      isVi ? 'Bạn có muốn gửi kèm ảnh lên Google Sheets?\n\nCó ảnh: payload lớn, dễ chậm khi nhiều item.\nChỉ danh sách: nhanh, ít dung lượng.' : 'Include images in the sync?\n\nWith images: larger payload, may be slow with many items.\nList only: faster, smaller payload.';
+  String get syncWithImagesShort => isVi ? 'Có, gửi ảnh' : 'Yes, with images';
+  String get syncWithoutImagesShort => isVi ? 'Không, chỉ danh sách' : 'No, list only';
   String get open => isVi ? 'Mở' : 'Open';
   String get syncUrlSetting => isVi ? 'Cấu hình URL đồng bộ' : 'Sync URL';
   String get syncUrlHint => isVi ? 'Dán URL Web App từ Google Apps Script' : 'Paste Web App URL from Google Apps Script';

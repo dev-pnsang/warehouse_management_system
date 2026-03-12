@@ -45,7 +45,8 @@ class GoogleSheetsSyncService {
   }
 
   /// Đọc ảnh từ [imagePath], resize (max [maxWidth]), encode JPEG quality [jpegQuality], trả về base64 hoặc null.
-  static Future<String?> _itemImageBase64(String imagePath, {int maxWidth = 200, int jpegQuality = 82}) async {
+  /// Giá trị nhỏ hơn giúp giảm payload POST (Apps Script giới hạn ~50MB, thực tế dễ timeout nếu quá lớn).
+  static Future<String?> _itemImageBase64(String imagePath, {int maxWidth = 120, int jpegQuality = 65}) async {
     try {
       final file = File(imagePath);
       if (!await file.exists()) return null;
@@ -61,8 +62,10 @@ class GoogleSheetsSyncService {
     }
   }
 
-  Future<void> syncViaAppsScript() async {
-    _log('Bắt đầu đồng bộ...');
+  /// Nếu [includeImages] = false: chỉ gửi text (ID, Name, ...), không gửi base64 → payload nhỏ, tránh timeout/chồng ảnh khi dữ liệu nhiều.
+  /// Nếu số item > [maxItemsWithImages] và [includeImages] vẫn true, tự tắt gửi ảnh và log cảnh báo.
+  Future<void> syncViaAppsScript({bool includeImages = true, int maxItemsWithImages = 40}) async {
+    _log('Bắt đầu đồng bộ... (includeImages=$includeImages)');
     final url = await getSyncUrl();
     if (url == null || url.isEmpty) {
       _log('Lỗi: Chưa cấu hình URL đồng bộ.');
@@ -73,11 +76,18 @@ class GoogleSheetsSyncService {
 
     final items = await _db.itemsDao.getAll();
     final categories = await _db.categoriesDao.getAll();
-    _log('Đã lấy dữ liệu: ${items.length} items, ${categories.length} categories');
+    final locations = await _db.locationsDao.getAll();
+    _log('Đã lấy dữ liệu: ${items.length} items, ${categories.length} categories, ${locations.length} locations');
     final catMap = {for (var c in categories) c.id: c.name};
+    final locMap = {for (var l in locations) l.id: l.name};
 
-    const maxThumbnailWidth = 200;
-    const jpegQuality = 82;
+    var sendImages = includeImages;
+    if (items.length > maxItemsWithImages && sendImages) {
+      _log('Quá $maxItemsWithImages item → tắt gửi ảnh để giảm dung lượng. Chỉ đồng bộ danh sách.');
+      sendImages = false;
+    }
+    const maxThumbnailWidth = 120;
+    const jpegQuality = 65;
     final itemList = <Map<String, dynamic>>[];
     for (final i in items) {
       final map = <String, dynamic>{
@@ -87,10 +97,14 @@ class GoogleSheetsSyncService {
         'category': i.categoryId != null ? (catMap[i.categoryId] ?? '') : '',
         'barcode': i.barcode ?? '',
         'notes': i.notes ?? '',
+        'position':
+            i.locationId != null ? (locMap[i.locationId] ?? '') : '',
         'createdAt': i.createdAt.toIso8601String(),
       };
-      final b64 = await _itemImageBase64(i.imagePath, maxWidth: maxThumbnailWidth, jpegQuality: jpegQuality);
-      if (b64 != null) map['imageBase64'] = b64;
+      if (sendImages) {
+        final b64 = await _itemImageBase64(i.imagePath, maxWidth: maxThumbnailWidth, jpegQuality: jpegQuality);
+        if (b64 != null) map['imageBase64'] = b64;
+      }
       itemList.add(map);
     }
     final withImage = itemList.where((m) => m.containsKey('imageBase64')).length;
@@ -102,6 +116,15 @@ class GoogleSheetsSyncService {
           {
             'id': c.id,
             'name': c.name,
+          },
+      ],
+      // Sheet Locations: danh sách vị trí (Position) giống sheet Categories
+      'locations': [
+        for (final l in locations)
+          {
+            'id': l.id,
+            'name': l.name,
+            'parentId': l.parentId,
           },
       ],
     };

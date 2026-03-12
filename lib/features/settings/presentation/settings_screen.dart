@@ -70,7 +70,8 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.cloud_upload),
             title: Text(s.syncToGoogleSheets, style: const TextStyle(fontWeight: FontWeight.w600)),
-            onTap: () => _syncToGoogleSheets(context, ref),
+            subtitle: Text(s.syncSheetsHint, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            onTap: () => _syncToGoogleSheetsDialog(context, ref),
           ),
         ],
       ),
@@ -118,10 +119,34 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _syncToGoogleSheets(BuildContext context, WidgetRef ref) async {
+  Future<void> _syncToGoogleSheetsDialog(BuildContext context, WidgetRef ref) async {
+    final s = ref.read(appStringsProvider);
+    if (!context.mounted) return;
+    final includeImages = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.syncToGoogleSheets),
+        content: Text(s.syncAskImages),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.syncWithoutImagesShort),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.syncWithImagesShort),
+          ),
+        ],
+      ),
+    );
+    if (includeImages == null || !context.mounted) return;
+    await _syncToGoogleSheets(context, ref, includeImages: includeImages);
+  }
+
+  Future<void> _syncToGoogleSheets(BuildContext context, WidgetRef ref, {required bool includeImages}) async {
     final s = ref.read(appStringsProvider);
     try {
-      await ref.read(googleSheetsSyncServiceProvider).syncViaAppsScript();
+      await ref.read(googleSheetsSyncServiceProvider).syncViaAppsScript(includeImages: includeImages);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

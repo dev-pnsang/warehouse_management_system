@@ -1,5 +1,7 @@
 /**
  * SwiftKeep – Đồng bộ lên Google Sheets (Web App doPost).
+ * Sheet Items: ID, Name, Quantity, Category, Barcode, Notes, Position (tên vị trí), Created, Image.
+ * Sheet Categories + sheet Locations (danh sách vị trí: ID, Name, ParentID).
  * Cách dùng: Mở Google Sheet → Extensions → Apps Script → dán toàn bộ file này →
  * Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone.
  * Copy Web app URL và dán vào app (Cài đặt → Cấu hình URL đồng bộ).
@@ -19,20 +21,36 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     var items = data.items || [];
     var categories = data.categories || [];
+    var locations = data.locations || [];
     Logger.log(
       "Items received: " +
         items.length +
         ", categories: " +
-        (categories.length || 0),
+        (categories.length || 0) +
+        ", locations: " +
+        locations.length,
     );
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     Logger.log("Spreadsheet: " + ss.getId() + " - " + ss.getUrl());
 
     var itemsSheet = ss.getSheetByName("Items") || ss.insertSheet("Items");
     itemsSheet.clear();
+    try {
+      var existingImages = itemsSheet.getImages();
+      for (var k = 0; k < existingImages.length; k++) {
+        try {
+          existingImages[k].remove();
+        } catch (remErr) {
+          Logger.log("remove image " + k + ": " + remErr);
+        }
+      }
+    } catch (imgErr) {
+      Logger.log("getImages/remove: " + imgErr);
+    }
     itemsSheet.setRowHeights(1, Math.max(items.length + 1, 1), 80);
+    // 9 cột text + ảnh ở cột 9
     itemsSheet
-      .getRange(1, 1, 1, 8)
+      .getRange(1, 1, 1, 9)
       .setValues([
         [
           "ID",
@@ -41,11 +59,12 @@ function doPost(e) {
           "Category",
           "Barcode",
           "Notes",
+          "Position",
           "Created",
           "Image",
         ],
       ]);
-    itemsSheet.setColumnWidth(8, 120);
+    itemsSheet.setColumnWidth(9, 120);
     if (items.length > 0) {
       var rowData = items.map(function (i) {
         return [
@@ -55,10 +74,11 @@ function doPost(e) {
           i.category || "",
           i.barcode || "",
           i.notes || "",
+          i.position || "",
           i.createdAt || "",
         ];
       });
-      itemsSheet.getRange(2, 1, items.length, 7).setValues(rowData);
+      itemsSheet.getRange(2, 1, items.length, 8).setValues(rowData);
       for (var r = 0; r < items.length; r++) {
         if (items[r].imageBase64) {
           try {
@@ -68,11 +88,10 @@ function doPost(e) {
               "image/jpeg",
               "item_" + r + ".jpg",
             );
-            // Giới hạn kích thước để ảnh nằm trong ô (cột H rộng 120px, hàng cao 80px)
             var imgW = 110,
               imgH = 70;
             itemsSheet
-              .insertImage(blob, 8, r + 2)
+              .insertImage(blob, 9, r + 2)
               .setWidth(imgW)
               .setHeight(imgH);
           } catch (err) {
@@ -91,6 +110,22 @@ function doPost(e) {
         return [c.id, c.name];
       });
       catSheet.getRange(2, 1, categories.length, 2).setValues(catRows);
+    }
+
+    // Sheet Locations (Position): danh sách vị trí – ID, Name, ParentID
+    var locSheet =
+      ss.getSheetByName("Locations") || ss.insertSheet("Locations");
+    locSheet.clear();
+    locSheet.appendRow(["ID", "Name", "ParentID"]);
+    if (locations.length > 0) {
+      var locRows = locations.map(function (loc) {
+        return [
+          loc.id,
+          loc.name || "",
+          loc.parentId != null ? loc.parentId : "",
+        ];
+      });
+      locSheet.getRange(2, 1, locations.length, 3).setValues(locRows);
     }
 
     return ContentService.createTextOutput(
