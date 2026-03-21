@@ -600,6 +600,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
   late final GeneratedColumn<String> purchaseDate = GeneratedColumn<String>(
       'purchase_date', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _expiryDateMeta =
+      const VerificationMeta('expiryDate');
+  @override
+  late final GeneratedColumn<String> expiryDate = GeneratedColumn<String>(
+      'expiry_date', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _storeMeta = const VerificationMeta('store');
   @override
   late final GeneratedColumn<String> store = GeneratedColumn<String>(
@@ -644,6 +650,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         barcode,
         purchasePrice,
         purchaseDate,
+        expiryDate,
         store,
         serialNumber,
         tags,
@@ -709,6 +716,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
           purchaseDate.isAcceptableOrUnknown(
               data['purchase_date']!, _purchaseDateMeta));
     }
+    if (data.containsKey('expiry_date')) {
+      context.handle(
+          _expiryDateMeta,
+          expiryDate.isAcceptableOrUnknown(
+              data['expiry_date']!, _expiryDateMeta));
+    }
     if (data.containsKey('store')) {
       context.handle(
           _storeMeta, store.isAcceptableOrUnknown(data['store']!, _storeMeta));
@@ -760,6 +773,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
           .read(DriftSqlType.double, data['${effectivePrefix}purchase_price']),
       purchaseDate: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}purchase_date']),
+      expiryDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}expiry_date']),
       store: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}store']),
       serialNumber: attachedDatabase.typeMapping
@@ -790,6 +805,7 @@ class Item extends DataClass implements Insertable<Item> {
   final String? barcode;
   final double? purchasePrice;
   final String? purchaseDate;
+  final String? expiryDate;
   final String? store;
   final String? serialNumber;
   final String? tags;
@@ -806,6 +822,7 @@ class Item extends DataClass implements Insertable<Item> {
       this.barcode,
       this.purchasePrice,
       this.purchaseDate,
+      this.expiryDate,
       this.store,
       this.serialNumber,
       this.tags,
@@ -837,6 +854,9 @@ class Item extends DataClass implements Insertable<Item> {
     }
     if (!nullToAbsent || purchaseDate != null) {
       map['purchase_date'] = Variable<String>(purchaseDate);
+    }
+    if (!nullToAbsent || expiryDate != null) {
+      map['expiry_date'] = Variable<String>(expiryDate);
     }
     if (!nullToAbsent || store != null) {
       map['store'] = Variable<String>(store);
@@ -875,6 +895,9 @@ class Item extends DataClass implements Insertable<Item> {
       purchaseDate: purchaseDate == null && nullToAbsent
           ? const Value.absent()
           : Value(purchaseDate),
+      expiryDate: expiryDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expiryDate),
       store:
           store == null && nullToAbsent ? const Value.absent() : Value(store),
       serialNumber: serialNumber == null && nullToAbsent
@@ -900,6 +923,7 @@ class Item extends DataClass implements Insertable<Item> {
       barcode: serializer.fromJson<String?>(json['barcode']),
       purchasePrice: serializer.fromJson<double?>(json['purchasePrice']),
       purchaseDate: serializer.fromJson<String?>(json['purchaseDate']),
+      expiryDate: serializer.fromJson<String?>(json['expiryDate']),
       store: serializer.fromJson<String?>(json['store']),
       serialNumber: serializer.fromJson<String?>(json['serialNumber']),
       tags: serializer.fromJson<String?>(json['tags']),
@@ -921,6 +945,7 @@ class Item extends DataClass implements Insertable<Item> {
       'barcode': serializer.toJson<String?>(barcode),
       'purchasePrice': serializer.toJson<double?>(purchasePrice),
       'purchaseDate': serializer.toJson<String?>(purchaseDate),
+      'expiryDate': serializer.toJson<String?>(expiryDate),
       'store': serializer.toJson<String?>(store),
       'serialNumber': serializer.toJson<String?>(serialNumber),
       'tags': serializer.toJson<String?>(tags),
@@ -940,6 +965,7 @@ class Item extends DataClass implements Insertable<Item> {
           Value<String?> barcode = const Value.absent(),
           Value<double?> purchasePrice = const Value.absent(),
           Value<String?> purchaseDate = const Value.absent(),
+          Value<String?> expiryDate = const Value.absent(),
           Value<String?> store = const Value.absent(),
           Value<String?> serialNumber = const Value.absent(),
           Value<String?> tags = const Value.absent(),
@@ -958,6 +984,7 @@ class Item extends DataClass implements Insertable<Item> {
             purchasePrice.present ? purchasePrice.value : this.purchasePrice,
         purchaseDate:
             purchaseDate.present ? purchaseDate.value : this.purchaseDate,
+        expiryDate: expiryDate.present ? expiryDate.value : this.expiryDate,
         store: store.present ? store.value : this.store,
         serialNumber:
             serialNumber.present ? serialNumber.value : this.serialNumber,
@@ -983,6 +1010,8 @@ class Item extends DataClass implements Insertable<Item> {
       purchaseDate: data.purchaseDate.present
           ? data.purchaseDate.value
           : this.purchaseDate,
+      expiryDate:
+          data.expiryDate.present ? data.expiryDate.value : this.expiryDate,
       store: data.store.present ? data.store.value : this.store,
       serialNumber: data.serialNumber.present
           ? data.serialNumber.value
@@ -1006,6 +1035,7 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('barcode: $barcode, ')
           ..write('purchasePrice: $purchasePrice, ')
           ..write('purchaseDate: $purchaseDate, ')
+          ..write('expiryDate: $expiryDate, ')
           ..write('store: $store, ')
           ..write('serialNumber: $serialNumber, ')
           ..write('tags: $tags, ')
@@ -1027,6 +1057,7 @@ class Item extends DataClass implements Insertable<Item> {
       barcode,
       purchasePrice,
       purchaseDate,
+      expiryDate,
       store,
       serialNumber,
       tags,
@@ -1046,6 +1077,7 @@ class Item extends DataClass implements Insertable<Item> {
           other.barcode == this.barcode &&
           other.purchasePrice == this.purchasePrice &&
           other.purchaseDate == this.purchaseDate &&
+          other.expiryDate == this.expiryDate &&
           other.store == this.store &&
           other.serialNumber == this.serialNumber &&
           other.tags == this.tags &&
@@ -1064,6 +1096,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<String?> barcode;
   final Value<double?> purchasePrice;
   final Value<String?> purchaseDate;
+  final Value<String?> expiryDate;
   final Value<String?> store;
   final Value<String?> serialNumber;
   final Value<String?> tags;
@@ -1080,6 +1113,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.barcode = const Value.absent(),
     this.purchasePrice = const Value.absent(),
     this.purchaseDate = const Value.absent(),
+    this.expiryDate = const Value.absent(),
     this.store = const Value.absent(),
     this.serialNumber = const Value.absent(),
     this.tags = const Value.absent(),
@@ -1097,6 +1131,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.barcode = const Value.absent(),
     this.purchasePrice = const Value.absent(),
     this.purchaseDate = const Value.absent(),
+    this.expiryDate = const Value.absent(),
     this.store = const Value.absent(),
     this.serialNumber = const Value.absent(),
     this.tags = const Value.absent(),
@@ -1114,6 +1149,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<String>? barcode,
     Expression<double>? purchasePrice,
     Expression<String>? purchaseDate,
+    Expression<String>? expiryDate,
     Expression<String>? store,
     Expression<String>? serialNumber,
     Expression<String>? tags,
@@ -1131,6 +1167,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (barcode != null) 'barcode': barcode,
       if (purchasePrice != null) 'purchase_price': purchasePrice,
       if (purchaseDate != null) 'purchase_date': purchaseDate,
+      if (expiryDate != null) 'expiry_date': expiryDate,
       if (store != null) 'store': store,
       if (serialNumber != null) 'serial_number': serialNumber,
       if (tags != null) 'tags': tags,
@@ -1150,6 +1187,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       Value<String?>? barcode,
       Value<double?>? purchasePrice,
       Value<String?>? purchaseDate,
+      Value<String?>? expiryDate,
       Value<String?>? store,
       Value<String?>? serialNumber,
       Value<String?>? tags,
@@ -1166,6 +1204,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       barcode: barcode ?? this.barcode,
       purchasePrice: purchasePrice ?? this.purchasePrice,
       purchaseDate: purchaseDate ?? this.purchaseDate,
+      expiryDate: expiryDate ?? this.expiryDate,
       store: store ?? this.store,
       serialNumber: serialNumber ?? this.serialNumber,
       tags: tags ?? this.tags,
@@ -1207,6 +1246,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (purchaseDate.present) {
       map['purchase_date'] = Variable<String>(purchaseDate.value);
     }
+    if (expiryDate.present) {
+      map['expiry_date'] = Variable<String>(expiryDate.value);
+    }
     if (store.present) {
       map['store'] = Variable<String>(store.value);
     }
@@ -1238,6 +1280,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('barcode: $barcode, ')
           ..write('purchasePrice: $purchasePrice, ')
           ..write('purchaseDate: $purchaseDate, ')
+          ..write('expiryDate: $expiryDate, ')
           ..write('store: $store, ')
           ..write('serialNumber: $serialNumber, ')
           ..write('tags: $tags, ')
@@ -2711,6 +2754,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String?> barcode,
   Value<double?> purchasePrice,
   Value<String?> purchaseDate,
+  Value<String?> expiryDate,
   Value<String?> store,
   Value<String?> serialNumber,
   Value<String?> tags,
@@ -2728,6 +2772,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String?> barcode,
   Value<double?> purchasePrice,
   Value<String?> purchaseDate,
+  Value<String?> expiryDate,
   Value<String?> store,
   Value<String?> serialNumber,
   Value<String?> tags,
@@ -2825,6 +2870,9 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get purchaseDate => $composableBuilder(
       column: $table.purchaseDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get expiryDate => $composableBuilder(
+      column: $table.expiryDate, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get store => $composableBuilder(
       column: $table.store, builder: (column) => ColumnFilters(column));
@@ -2959,6 +3007,9 @@ class $$ItemsTableOrderingComposer
       column: $table.purchaseDate,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get expiryDate => $composableBuilder(
+      column: $table.expiryDate, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get store => $composableBuilder(
       column: $table.store, builder: (column) => ColumnOrderings(column));
 
@@ -3048,6 +3099,9 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<String> get purchaseDate => $composableBuilder(
       column: $table.purchaseDate, builder: (column) => column);
+
+  GeneratedColumn<String> get expiryDate => $composableBuilder(
+      column: $table.expiryDate, builder: (column) => column);
 
   GeneratedColumn<String> get store =>
       $composableBuilder(column: $table.store, builder: (column) => column);
@@ -3184,6 +3238,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> barcode = const Value.absent(),
             Value<double?> purchasePrice = const Value.absent(),
             Value<String?> purchaseDate = const Value.absent(),
+            Value<String?> expiryDate = const Value.absent(),
             Value<String?> store = const Value.absent(),
             Value<String?> serialNumber = const Value.absent(),
             Value<String?> tags = const Value.absent(),
@@ -3201,6 +3256,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             barcode: barcode,
             purchasePrice: purchasePrice,
             purchaseDate: purchaseDate,
+            expiryDate: expiryDate,
             store: store,
             serialNumber: serialNumber,
             tags: tags,
@@ -3218,6 +3274,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> barcode = const Value.absent(),
             Value<double?> purchasePrice = const Value.absent(),
             Value<String?> purchaseDate = const Value.absent(),
+            Value<String?> expiryDate = const Value.absent(),
             Value<String?> store = const Value.absent(),
             Value<String?> serialNumber = const Value.absent(),
             Value<String?> tags = const Value.absent(),
@@ -3235,6 +3292,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             barcode: barcode,
             purchasePrice: purchasePrice,
             purchaseDate: purchaseDate,
+            expiryDate: expiryDate,
             store: store,
             serialNumber: serialNumber,
             tags: tags,

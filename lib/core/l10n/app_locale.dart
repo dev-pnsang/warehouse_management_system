@@ -50,6 +50,16 @@ class AppStrings {
   String get totalCategories => isVi ? 'Danh mục' : 'Categories';
   String get lowStock => isVi ? 'Sắp hết' : 'Low Stock';
   String get recentActivity => isVi ? 'Hoạt động gần đây' : 'Recent Activity';
+  String get expiringSoon => isVi ? 'Sắp hết hạn' : 'Expiring soon';
+  String get expired => isVi ? 'Đã hết hạn' : 'Expired';
+  String get filterCategory => isVi ? 'Lọc danh mục' : 'Filter category';
+  String get filterLocation => isVi ? 'Lọc vị trí' : 'Filter location';
+  String get all => isVi ? 'Tất cả' : 'All';
+  String get unnamed => isVi ? 'Chưa đặt tên' : 'Unnamed';
+  String get noCategory => isVi ? 'Không có danh mục' : 'No category';
+  String get qtyLabel => isVi ? 'SL' : 'Qty';
+  String get noExpiringItems => isVi ? 'Không có vật phẩm sắp hết hạn.' : 'No expiring items.';
+  String get noExpiredItems => isVi ? 'Không có vật phẩm đã hết hạn.' : 'No expired items.';
   String get viewAll => isVi ? 'Xem tất cả' : 'View all';
   String get noItemsYet => isVi ? 'Chưa có vật phẩm. Nhấn + để thêm!' : 'No items yet. Tap + to add!';
   String get saveInstantly => isVi ? 'LƯU NGAY' : 'SAVE INSTANTLY';
@@ -116,6 +126,24 @@ class AppStrings {
   String get displayName => isVi ? 'Tên hiển thị' : 'Display name';
   String get displayNameHint => isVi ? 'Tên hiển thị trên màn hình chính (vd: Alex)' : 'Name shown on home screen (e.g. Alex)';
   String get displayNameSaved => isVi ? 'Đã lưu tên hiển thị' : 'Display name saved';
+  String get itemDetail => isVi ? 'Chi tiết vật phẩm' : 'Item detail';
+  String get itemHistory => isVi ? 'Lịch sử vật phẩm' : 'Item history';
+  String get deleteItemQuestion => isVi ? 'Xóa vật phẩm?' : 'Delete item?';
+  String get cancel => isVi ? 'Hủy' : 'Cancel';
+  String get delete => isVi ? 'Xóa' : 'Delete';
+  String get name => isVi ? 'Tên' : 'Name';
+  String get notes => isVi ? 'Ghi chú' : 'Notes';
+  String get barcode => 'Barcode';
+  String get store => isVi ? 'Cửa hàng' : 'Store';
+  String get serial => isVi ? 'Số serial' : 'Serial';
+  String get tags => 'Tags';
+  String get purchasePrice => isVi ? 'Giá mua' : 'Purchase price';
+  String get purchaseDate => isVi ? 'Ngày mua' : 'Purchase date';
+  String get expiryDate => isVi ? 'Ngày hết hạn' : 'Expiry date';
+  String get category => isVi ? 'Danh mục' : 'Category';
+  String get location => isVi ? 'Vị trí' : 'Location';
+  String get none => isVi ? 'Không chọn' : 'None';
+  String get noHistoryYet => isVi ? 'Chưa có lịch sử.' : 'No history yet.';
 }
 
 final appStringsProvider = Provider<AppStrings>((ref) {

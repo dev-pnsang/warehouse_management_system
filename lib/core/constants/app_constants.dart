@@ -7,4 +7,5 @@ class AppConstants {
   static const String defaultUserName = 'Alex';
   static const int lowStockThreshold = 3;
   static const int recentActivityLimit = 10;
+  static const int expirySoonDays = 7;
 }

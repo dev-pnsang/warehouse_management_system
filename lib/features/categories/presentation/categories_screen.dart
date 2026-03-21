@@ -24,6 +24,10 @@ class CategoriesScreen extends ConsumerWidget {
         foregroundColor: AppColors.primary,
         actions: [
           IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showAddCategory(context, ref),
+          ),
+          IconButton(
             icon: const Icon(Icons.place_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LocationsScreen()),
@@ -78,11 +82,6 @@ class CategoriesScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'categories_fab',
-        onPressed: () => _showAddCategory(context, ref),
-        child: const Icon(Icons.add),
       ),
     );
   }

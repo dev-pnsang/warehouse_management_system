@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/l10n/app_locale.dart';
@@ -21,15 +22,32 @@ class AddItemSheet extends ConsumerStatefulWidget {
 class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   File? _imageFile;
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _barcodeController = TextEditingController();
+  final TextEditingController _purchasePriceController = TextEditingController();
+  final TextEditingController _purchaseDateController = TextEditingController();
+  final TextEditingController _expiryDateController = TextEditingController();
+  final TextEditingController _storeController = TextEditingController();
+  final TextEditingController _serialController = TextEditingController();
+  final TextEditingController _tagsController = TextEditingController();
   int _quantity = 1;
   int? _selectedCategoryId;
   int? _selectedLocationId;
   bool _saving = false;
   bool _picking = false;
+  int _rotationQuarterTurns = 0;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _notesController.dispose();
+    _barcodeController.dispose();
+    _purchasePriceController.dispose();
+    _purchaseDateController.dispose();
+    _expiryDateController.dispose();
+    _storeController.dispose();
+    _serialController.dispose();
+    _tagsController.dispose();
     super.dispose();
   }
 
@@ -48,6 +66,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
         setState(() {
           _imageFile = File(xFile.path);
           _picking = false;
+          _rotationQuarterTurns = 0;
         });
       } else if (mounted) {
         setState(() => _picking = false);
@@ -64,7 +83,27 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   }
 
   void _retakePhoto() {
-    setState(() => _imageFile = null);
+    setState(() {
+      _imageFile = null;
+      _rotationQuarterTurns = 0;
+    });
+  }
+
+  void _rotatePhotoPreview() {
+    if (_imageFile == null) return;
+    setState(() => _rotationQuarterTurns = (_rotationQuarterTurns + 1) % 4);
+  }
+
+  Future<File> _applyRotationIfNeeded(File source) async {
+    if (_rotationQuarterTurns == 0) return source;
+    final bytes = await source.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return source;
+    final rotated = img.copyRotate(decoded, angle: (_rotationQuarterTurns * 90).toDouble());
+    final encoded = img.encodeJpg(rotated, quality: 92);
+    final outFile = File('${source.path}_rot${_rotationQuarterTurns}.jpg');
+    await outFile.writeAsBytes(encoded, flush: true);
+    return outFile;
   }
 
   Future<void> _save() async {
@@ -78,10 +117,20 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
     final quantity = _quantity;
     final categoryId = _selectedCategoryId;
     final locationId = _selectedLocationId;
+    final notes = _notesController.text.trim();
+    final barcode = _barcodeController.text.trim();
+    final purchasePriceText = _purchasePriceController.text.trim();
+    final purchaseDate = _purchaseDateController.text.trim();
+    final expiryDate = _expiryDateController.text.trim();
+    final store = _storeController.text.trim();
+    final serialNumber = _serialController.text.trim();
+    final tags = _tagsController.text.trim();
+    final purchasePrice = purchasePriceText.isEmpty ? null : double.tryParse(purchasePriceText);
     final imageFile = _imageFile!;
     setState(() => _saving = true);
     try {
-      final imagePath = await ImageStorage.saveItemImage(imageFile);
+      final fileToSave = await _applyRotationIfNeeded(imageFile);
+      final imagePath = await ImageStorage.saveItemImage(fileToSave);
       if (!mounted) return;
       await ref.read(itemsRepositoryProvider).addItem(
             imagePath: imagePath,
@@ -89,6 +138,14 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             quantity: quantity,
             categoryId: categoryId,
             locationId: locationId,
+            notes: notes.isEmpty ? null : notes,
+            barcode: barcode.isEmpty ? null : barcode,
+            purchasePrice: purchasePrice,
+            purchaseDate: purchaseDate.isEmpty ? null : purchaseDate,
+            expiryDate: expiryDate.isEmpty ? null : expiryDate,
+            store: store.isEmpty ? null : store,
+            serialNumber: serialNumber.isEmpty ? null : serialNumber,
+            tags: tags.isEmpty ? null : tags,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -156,14 +213,28 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                           ? Stack(
                               fit: StackFit.expand,
                               children: [
-                                Image.file(_imageFile!, fit: BoxFit.cover),
+                                RotatedBox(
+                                  quarterTurns: _rotationQuarterTurns,
+                                  child: Image.file(_imageFile!, fit: BoxFit.cover),
+                                ),
                                 Positioned(
                                   right: 8,
                                   top: 8,
-                                  child: IconButton.filled(
-                                    onPressed: _retakePhoto,
-                                    icon: const Icon(Icons.camera_alt, color: Colors.white),
-                                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton.filled(
+                                        onPressed: _rotatePhotoPreview,
+                                        icon: const Icon(Icons.rotate_right, color: Colors.white),
+                                        style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton.filled(
+                                        onPressed: _retakePhoto,
+                                        icon: const Icon(Icons.camera_alt, color: Colors.white),
+                                        style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -204,6 +275,89 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                TextField(
+                  controller: _notesController,
+                  decoration: InputDecoration(
+                    labelText: s.notes,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _barcodeController,
+                  decoration: InputDecoration(
+                    labelText: s.barcode,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _purchasePriceController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: s.purchasePrice,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _purchaseDateController,
+                  decoration: InputDecoration(
+                    labelText: s.purchaseDate,
+                    hintText: 'YYYY-MM-DD',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _expiryDateController,
+                  decoration: InputDecoration(
+                    labelText: s.expiryDate,
+                    hintText: 'YYYY-MM-DD',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _storeController,
+                  decoration: InputDecoration(
+                    labelText: s.store,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _serialController,
+                  decoration: InputDecoration(
+                    labelText: s.serial,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _tagsController,
+                  decoration: InputDecoration(
+                    labelText: s.tags,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Text(s.quantity, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
@@ -229,27 +383,37 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   future: ref.read(categoriesRepositoryProvider).getAll(),
                   builder: (context, snap) {
                     final categories = snap.data ?? [];
-                    if (categories.isEmpty) {
-                      return Text(s.noCategories, style: TextStyle(color: AppColors.textSecondary, fontSize: 13));
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(s.categories, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: categories.map(
-                            (c) => FilterChip(
-                              label: Text(c.name),
-                              selected: _selectedCategoryId == c.id,
-                              onSelected: (v) => setState(() => _selectedCategoryId = v ? c.id : null),
-                            ),
-                          ).toList(),
+                    return DropdownButtonFormField<int?>(
+                      isExpanded: true,
+                      value: _selectedCategoryId,
+                      decoration: InputDecoration(
+                        labelText: s.categories,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: AppColors.background,
+                      ),
+                      items: [
+                        DropdownMenuItem<int?>(value: null, child: Text(s.noCategories)),
+                        ...categories.map(
+                          (c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.name)),
                         ),
                       ],
+                      onChanged: categories.isEmpty
+                          ? null
+                          : (v) => setState(() => _selectedCategoryId = v),
+                    );
+                  },
+                ),
+                FutureBuilder(
+                  future: ref.read(categoriesRepositoryProvider).getAll(),
+                  builder: (context, snap) {
+                    if ((snap.data ?? []).isNotEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        s.noCategories,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      ),
                     );
                   },
                 ),
@@ -259,12 +423,13 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                   builder: (context, snap) {
                     final locations = snap.data ?? [];
                     return DropdownButtonFormField<int?>(
+                      isExpanded: true,
                       value: _selectedLocationId,
                       decoration: InputDecoration(
                         labelText: s.selectLocation,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         filled: true,
-                        fillColor: AppColors.surface,
+                        fillColor: AppColors.background,
                       ),
                       items: [
                         DropdownMenuItem<int?>(value: null, child: Text(s.noLocation)),

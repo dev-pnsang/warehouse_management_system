@@ -4,8 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/database/app_database.dart';
 import '../data/locations_repository.dart';
 
-final locationsListProvider = FutureProvider.autoDispose<List<Location>>((ref) {
-  return ref.watch(locationsRepositoryProvider).getAll();
+final locationsListProvider = StreamProvider.autoDispose<List<Location>>((ref) {
+  return ref.watch(locationsRepositoryProvider).watchAll();
 });
 
 class LocationsScreen extends ConsumerWidget {
@@ -21,6 +21,12 @@ class LocationsScreen extends ConsumerWidget {
         title: const Text('Locations', style: TextStyle(color: AppColors.textPrimary)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.primary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showAddLocation(context, ref),
+          ),
+        ],
       ),
       body: locationsAsync.when(
         data: (locations) {
@@ -71,110 +77,73 @@ class LocationsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'locations_fab',
-        onPressed: () => _showAddLocation(context, ref),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
   void _showAddLocation(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'Location name',
-                  hintText: 'e.g. Home > Bedroom > Desk',
-                ),
-                autofocus: true,
-                onSubmitted: (_) => _submitLocation(sheetContext, context, ref, controller.text),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => _submitLocation(sheetContext, context, ref, controller.text),
-                child: const Text('Add'),
-              ),
-            ],
-          ),
-        ),
+      builder: (sheetContext) => _AddLocationSheet(
+        onSubmit: (name) => _submitLocation(sheetContext, context, ref, name),
       ),
-    ).then((_) {
-      // Dispose sau khi sheet đã đóng hẳn, tránh "used after being disposed"
-      WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
-    });
+    );
   }
 
-  void _submitLocation(
+  Future<void> _submitLocation(
     BuildContext sheetContext,
     BuildContext screenContext,
     WidgetRef ref,
     String name,
-  ) {
+  ) async {
     if (name.trim().isEmpty) return;
-    ref.read(locationsRepositoryProvider).create(name.trim());
-    Navigator.of(sheetContext).pop();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(locationsListProvider);
+    try {
+      await ref.read(locationsRepositoryProvider).create(name.trim());
+      if (sheetContext.mounted) {
+        Navigator.of(sheetContext).pop();
+      }
       if (screenContext.mounted) {
         ScaffoldMessenger.of(screenContext).showSnackBar(
           const SnackBar(content: Text('Location added'), backgroundColor: AppColors.accent),
         );
       }
-    });
+    } catch (e) {
+      if (screenContext.mounted) {
+        ScaffoldMessenger.of(screenContext).showSnackBar(
+          SnackBar(content: Text('Create failed: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   void _showEditLocation(BuildContext context, WidgetRef ref, Location loc) {
-    final controller = TextEditingController(text: loc.name);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(labelText: 'Location name'),
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () async {
-                  if (controller.text.trim().isEmpty) return;
-                  await ref.read(locationsRepositoryProvider).update(loc, name: controller.text.trim());
-                  Navigator.of(sheetContext).pop();
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    ref.invalidate(locationsListProvider);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Updated'), backgroundColor: AppColors.accent),
-                      );
-                    }
-                  });
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ),
+      builder: (sheetContext) => _EditLocationSheet(
+        location: loc,
+        onSubmit: (name) async {
+          if (name.trim().isEmpty) return;
+          try {
+            await ref.read(locationsRepositoryProvider).update(loc, name: name.trim());
+            if (sheetContext.mounted) {
+              Navigator.of(sheetContext).pop();
+            }
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Updated'), backgroundColor: AppColors.accent),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Update failed: $e'), backgroundColor: AppColors.error),
+              );
+            }
+          }
+        },
       ),
-    ).then((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
-    });
+    );
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, Location loc) async {
@@ -193,9 +162,123 @@ class LocationsScreen extends ConsumerWidget {
       ),
     );
     if (ok == true) {
-      await ref.read(locationsRepositoryProvider).delete(loc);
-      ref.invalidate(locationsListProvider);
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted')));
+      try {
+        await ref.read(locationsRepositoryProvider).delete(loc);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deleted')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Delete failed: $e'), backgroundColor: AppColors.error),
+          );
+        }
+      }
     }
+  }
+}
+
+class _AddLocationSheet extends StatefulWidget {
+  const _AddLocationSheet({required this.onSubmit});
+
+  final Future<void> Function(String name) onSubmit;
+
+  @override
+  State<_AddLocationSheet> createState() => _AddLocationSheetState();
+}
+
+class _AddLocationSheetState extends State<_AddLocationSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(
+                labelText: 'Location name',
+                hintText: 'e.g. Home > Bedroom > Desk',
+              ),
+              autofocus: true,
+              onSubmitted: (_) => widget.onSubmit(_controller.text),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => widget.onSubmit(_controller.text),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditLocationSheet extends StatefulWidget {
+  const _EditLocationSheet({required this.location, required this.onSubmit});
+
+  final Location location;
+  final Future<void> Function(String name) onSubmit;
+
+  @override
+  State<_EditLocationSheet> createState() => _EditLocationSheetState();
+}
+
+class _EditLocationSheetState extends State<_EditLocationSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.location.name);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(labelText: 'Location name'),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => widget.onSubmit(_controller.text),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

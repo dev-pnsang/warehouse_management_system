@@ -23,3 +23,30 @@ final lowStockCountProvider = StreamProvider<int>((ref) {
 final recentActivityProvider = StreamProvider<List<Item>>((ref) {
   return ref.watch(itemsRepositoryProvider).watchRecent(AppConstants.recentActivityLimit);
 });
+
+final expiringSoonCountProvider = StreamProvider<int>((ref) {
+  final now = DateTime.now();
+  final limit = now.add(Duration(days: AppConstants.expirySoonDays));
+  return ref.watch(itemsRepositoryProvider).watchAll().map((items) {
+    return items.where((i) {
+      final d = _parseDate(i.expiryDate);
+      if (d == null) return false;
+      return !d.isBefore(now) && !d.isAfter(limit);
+    }).length;
+  });
+});
+
+final expiredCountProvider = StreamProvider<int>((ref) {
+  final now = DateTime.now();
+  return ref.watch(itemsRepositoryProvider).watchAll().map((items) {
+    return items.where((i) {
+      final d = _parseDate(i.expiryDate);
+      return d != null && d.isBefore(now);
+    }).length;
+  });
+});
+
+DateTime? _parseDate(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  return DateTime.tryParse(raw.trim());
+}

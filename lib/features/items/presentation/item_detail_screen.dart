@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/widgets/image_preview_screen.dart';
 import '../../categories/data/categories_repository.dart';
 import '../../locations/data/locations_repository.dart';
@@ -28,16 +29,17 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Item Detail', style: TextStyle(color: AppColors.textPrimary)),
+        title: Text(s.itemDetail, style: const TextStyle(color: AppColors.textPrimary)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.primary,
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => _confirmDelete(context),
+            onPressed: () => _confirmDelete(context, s),
           ),
         ],
       ),
@@ -55,13 +57,18 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               children: [
                 _ImageSection(item: item),
                 const SizedBox(height: 20),
-                _EditableSection(item: item, ref: ref, onUpdated: () => setState(() {
-                  _itemFuture = ref.read(itemsRepositoryProvider).getById(widget.itemId);
-                })),
+                _EditableSection(
+                  item: item,
+                  ref: ref,
+                  s: s,
+                  onUpdated: () => setState(() {
+                    _itemFuture = ref.read(itemsRepositoryProvider).getById(widget.itemId);
+                  }),
+                ),
                 const SizedBox(height: 24),
-                const Text('Item History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                Text(s.itemHistory, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                _HistorySection(itemId: item.id, ref: ref),
+                _HistorySection(itemId: item.id, ref: ref, s: s),
               ],
             ),
           );
@@ -70,17 +77,17 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     );
   }
 
-  void _confirmDelete(BuildContext context) async {
+  void _confirmDelete(BuildContext context, AppStrings s) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete item?'),
+        title: Text(s.deleteItemQuestion),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(s.delete),
           ),
         ],
       ),
@@ -128,10 +135,11 @@ class _ImageSection extends StatelessWidget {
 }
 
 class _EditableSection extends StatelessWidget {
-  const _EditableSection({required this.item, required this.ref, required this.onUpdated});
+  const _EditableSection({required this.item, required this.ref, required this.s, required this.onUpdated});
 
   final Item item;
   final WidgetRef ref;
+  final AppStrings s;
   final VoidCallback onUpdated;
 
   @override
@@ -143,7 +151,7 @@ class _EditableSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _EditTile(
-              label: 'Name',
+              label: s.name,
               value: item.name,
               onSave: (v) async {
                 await ref.read(itemsRepositoryProvider).updateItem(item, name: v.isEmpty ? null : v);
@@ -151,7 +159,7 @@ class _EditableSection extends StatelessWidget {
               },
             ),
             _EditTile(
-              label: 'Quantity',
+              label: s.quantity,
               value: '${item.quantity}',
               onSave: (v) async {
                 final q = int.tryParse(v);
@@ -162,24 +170,106 @@ class _EditableSection extends StatelessWidget {
               },
             ),
             _EditTile(
-              label: 'Notes',
+              label: s.notes,
               value: item.notes,
               onSave: (v) async {
                 await ref.read(itemsRepositoryProvider).updateItem(item, notes: v.isEmpty ? null : v);
                 onUpdated();
               },
             ),
-            _EditTile(label: 'Barcode', value: item.barcode),
-            _EditTile(label: 'Store', value: item.store),
-            _EditTile(label: 'Serial', value: item.serialNumber),
-            _EditTile(label: 'Tags', value: item.tags),
+            _EditTile(
+              label: s.barcode,
+              value: item.barcode,
+              onSave: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(
+                  item,
+                  barcode: v.trim().isEmpty ? null : v.trim(),
+                );
+                onUpdated();
+              },
+            ),
+            _EditTile(
+              label: s.store,
+              value: item.store,
+              onSave: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(
+                  item,
+                  store: v.trim().isEmpty ? null : v.trim(),
+                );
+                onUpdated();
+              },
+            ),
+            _EditTile(
+              label: s.serial,
+              value: item.serialNumber,
+              onSave: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(
+                  item,
+                  serialNumber: v.trim().isEmpty ? null : v.trim(),
+                );
+                onUpdated();
+              },
+            ),
+            _EditTile(
+              label: s.tags,
+              value: item.tags,
+              onSave: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(
+                  item,
+                  tags: v.trim().isEmpty ? null : v.trim(),
+                );
+                onUpdated();
+              },
+            ),
+            _EditTile(
+              label: s.purchasePrice,
+              value: item.purchasePrice?.toString(),
+              onSave: (v) async {
+                final raw = v.trim();
+                if (raw.isEmpty) {
+                  await ref.read(itemsRepositoryProvider).updateItem(item, purchasePrice: null);
+                  onUpdated();
+                  return;
+                }
+                final parsed = double.tryParse(raw);
+                if (parsed == null) return;
+                await ref.read(itemsRepositoryProvider).updateItem(item, purchasePrice: parsed);
+                onUpdated();
+              },
+            ),
+            _EditTile(
+              label: s.purchaseDate,
+              value: item.purchaseDate,
+              onSave: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(
+                  item,
+                  purchaseDate: v.trim().isEmpty ? null : v.trim(),
+                );
+                onUpdated();
+              },
+            ),
+            _EditTile(
+              label: s.expiryDate,
+              value: item.expiryDate,
+              onSave: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(
+                  item,
+                  expiryDate: v.trim().isEmpty ? null : v.trim(),
+                );
+                onUpdated();
+              },
+            ),
             FutureBuilder<Category?>(
               future: item.categoryId != null
                   ? ref.read(categoriesRepositoryProvider).getById(item.categoryId!)
                   : null,
               builder: (context, snap) => ListTile(
-                title: const Text('Category'),
-                subtitle: Text(snap.data?.name ?? 'None'),
+                title: Text(s.category),
+                subtitle: Text(snap.data?.name ?? s.none),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _showCategoryPicker(context),
+                ),
               ),
             ),
             FutureBuilder<Location?>(
@@ -187,11 +277,109 @@ class _EditableSection extends StatelessWidget {
                   ? ref.read(locationsRepositoryProvider).getById(item.locationId!)
                   : null,
               builder: (context, snap) => ListTile(
-                title: const Text('Location'),
-                subtitle: Text(snap.data?.name ?? 'None'),
+                title: Text(s.location),
+                subtitle: Text(snap.data?.name ?? s.none),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _showLocationPicker(context),
+                ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCategoryPicker(BuildContext context) async {
+    final categories = await ref.read(categoriesRepositoryProvider).getAll();
+    int? selectedId = item.categoryId;
+    if (!context.mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int?>(
+                isExpanded: true,
+                value: selectedId,
+                decoration: InputDecoration(
+                  labelText: s.category,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                items: [
+                  DropdownMenuItem<int?>(value: null, child: Text(s.none)),
+                  ...categories.map((c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.name))),
+                ],
+                onChanged: (v) => setModalState(() => selectedId = v),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () async {
+                  await ref.read(itemsRepositoryProvider).updateItem(item, categoryId: selectedId);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  onUpdated();
+                },
+                child: Text(s.save),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showLocationPicker(BuildContext context) async {
+    final locations = await ref.read(locationsRepositoryProvider).getAll();
+    int? selectedId = item.locationId;
+    if (!context.mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int?>(
+                isExpanded: true,
+                value: selectedId,
+                decoration: InputDecoration(
+                  labelText: s.location,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                items: [
+                  DropdownMenuItem<int?>(value: null, child: Text(s.none)),
+                  ...locations.map((l) => DropdownMenuItem<int?>(value: l.id, child: Text(l.name))),
+                ],
+                onChanged: (v) => setModalState(() => selectedId = v),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () async {
+                  await ref.read(itemsRepositoryProvider).updateItem(item, locationId: selectedId);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  onUpdated();
+                },
+                child: Text(s.save),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -272,10 +460,11 @@ class _EditTileState extends State<_EditTile> {
 }
 
 class _HistorySection extends StatelessWidget {
-  const _HistorySection({required this.itemId, required this.ref});
+  const _HistorySection({required this.itemId, required this.ref, required this.s});
 
   final int itemId;
   final WidgetRef ref;
+  final AppStrings s;
 
   @override
   Widget build(BuildContext context) {
@@ -284,7 +473,7 @@ class _HistorySection extends StatelessWidget {
       builder: (context, snap) {
         final list = snap.data ?? [];
         if (list.isEmpty) {
-          return const Text('No history yet.', style: TextStyle(color: AppColors.textSecondary));
+          return Text(s.noHistoryYet, style: const TextStyle(color: AppColors.textSecondary));
         }
         return Column(
           children: list.map((h) => ListTile(
@@ -303,7 +492,9 @@ class _HistorySection extends StatelessWidget {
   }
 
   String _month(int m) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final months = s.isVi
+        ? ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12']
+        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[m - 1];
   }
 }

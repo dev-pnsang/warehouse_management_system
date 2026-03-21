@@ -18,6 +18,7 @@ class MainShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(mainTabIndexProvider);
     final s = ref.watch(appStringsProvider);
+    final showGlobalAddItemFab = currentIndex != 1 && currentIndex != 2 && currentIndex != 3;
     final tabs = [
       const DashboardScreen(),
       const ItemsListScreen(),
@@ -27,16 +28,18 @@ class MainShell extends ConsumerWidget {
     ];
     return Scaffold(
       body: tabs[currentIndex],
-      floatingActionButton: FloatingActionButton.large(
-        heroTag: 'main_fab',
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => const AddItemSheet(),
-        ),
-        child: const Icon(Icons.add, size: 32),
-      ),
+      floatingActionButton: showGlobalAddItemFab
+          ? FloatingActionButton.large(
+              heroTag: 'main_fab',
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const AddItemSheet(),
+              ),
+              child: const Icon(Icons.add, size: 32),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         type: BottomNavigationBarType.fixed,

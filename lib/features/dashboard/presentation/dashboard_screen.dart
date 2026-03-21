@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/l10n/app_locale.dart';
 import '../../../core/preferences/user_display_name_provider.dart';
 import '../../../app/main_shell.dart';
+import '../../items/data/items_repository.dart';
 import '../providers/dashboard_providers.dart';
 import '../../../core/widgets/image_preview_screen.dart';
 import '../../items/presentation/item_detail_screen.dart';
@@ -18,6 +21,8 @@ class DashboardScreen extends ConsumerWidget {
     final totalItems = ref.watch(totalItemsProvider);
     final totalCategories = ref.watch(totalCategoriesProvider);
     final lowStockCount = ref.watch(lowStockCountProvider);
+    final expiringSoonCount = ref.watch(expiringSoonCountProvider);
+    final expiredCount = ref.watch(expiredCountProvider);
     final recentItems = ref.watch(recentActivityProvider);
     final s = ref.watch(appStringsProvider);
 
@@ -77,11 +82,7 @@ class DashboardScreen extends ConsumerWidget {
                         Expanded(
                           child: _StatCard(
                             label: s.totalItems,
-                            value: totalItems.when(
-                              data: (v) => '$v',
-                              loading: () => '—',
-                              error: (_, __) => '—',
-                            ),
+                            value: _valueFromAsyncInt(totalItems),
                             icon: Icons.inventory_2_outlined,
                           ),
                         ),
@@ -89,11 +90,7 @@ class DashboardScreen extends ConsumerWidget {
                         Expanded(
                           child: _StatCard(
                             label: s.totalCategories,
-                            value: totalCategories.when(
-                              data: (v) => '$v',
-                              loading: () => '—',
-                              error: (_, __) => '—',
-                            ),
+                            value: _valueFromAsyncInt(totalCategories),
                             icon: Icons.category_outlined,
                           ),
                         ),
@@ -102,13 +99,41 @@ class DashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 12),
                     _StatCard(
                       label: s.lowStock,
-                      value: lowStockCount.when(
-                        data: (v) => '$v',
-                        loading: () => '—',
-                        error: (_, __) => '—',
-                      ),
+                      value: _valueFromAsyncInt(lowStockCount),
                       icon: Icons.warning_amber_rounded,
                       accent: true,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            label: s.expiringSoon,
+                            value: _valueFromAsyncInt(expiringSoonCount),
+                            icon: Icons.event_available_outlined,
+                            accent: true,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => _ExpiryItemsScreen(expiredOnly: false),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            label: s.expired,
+                            value: _valueFromAsyncInt(expiredCount),
+                            icon: Icons.event_busy_outlined,
+                            accent: true,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => _ExpiryItemsScreen(expiredOnly: true),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     Row(
@@ -191,12 +216,40 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 );
               },
-              loading: () => const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              ),
+              loading: () {
+                final cached = recentItems.valueOrNull;
+                if (cached != null && cached.isNotEmpty) {
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final item = cached[index];
+                        final file = File(item.imagePath);
+                        return ListTile(
+                          leading: file.existsSync()
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(file, width: 48, height: 48, fit: BoxFit.cover),
+                                )
+                              : const SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: Icon(Icons.image_not_supported, color: AppColors.textSecondary),
+                                ),
+                          title: Text(item.name ?? s.unnamed),
+                          subtitle: Text('${s.qtyLabel}: ${item.quantity}'),
+                        );
+                      },
+                      childCount: cached.length,
+                    ),
+                  );
+                }
+                return const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                );
+              },
               error: (e, _) => SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -210,6 +263,12 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _valueFromAsyncInt(AsyncValue<int> v) {
+  final value = v.valueOrNull;
+  if (value != null) return '$value';
+  return '—';
 }
 
 class _SearchChip extends StatelessWidget {
@@ -254,56 +313,134 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     this.accent = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final bool accent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: accent ? AppColors.lowStock : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: accent ? AppColors.lowStock : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                icon,
-                size: 20,
-                color: accent ? AppColors.lowStock : AppColors.primary,
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 20,
+                    color: accent ? AppColors.lowStock : AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: accent ? AppColors.lowStock : AppColors.textPrimary,
+                    ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: accent ? AppColors.lowStock : AppColors.textPrimary,
-                ),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+class _ExpiryItemsScreen extends ConsumerWidget {
+  const _ExpiryItemsScreen({required this.expiredOnly});
+
+  final bool expiredOnly;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(appStringsProvider);
+    final title = expiredOnly ? s.expired : s.expiringSoon;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(title, style: const TextStyle(color: AppColors.textPrimary)),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.primary,
+      ),
+      body: StreamBuilder<List<Item>>(
+        stream: ref.watch(itemsRepositoryProvider).watchAll(),
+        builder: (context, snap) {
+          final now = DateTime.now();
+          final soonLimit = now.add(Duration(days: AppConstants.expirySoonDays));
+          final List<Item> source = snap.data ?? const <Item>[];
+          final items = source.where((i) {
+            final d = _parseDateValue(i.expiryDate);
+            if (d == null) return false;
+            if (expiredOnly) return d.isBefore(now);
+            return !d.isBefore(now) && !d.isAfter(soonLimit);
+          }).toList()
+            ..sort((a, b) {
+              final ad = _parseDateValue(a.expiryDate) ?? DateTime(9999);
+              final bd = _parseDateValue(b.expiryDate) ?? DateTime(9999);
+              return ad.compareTo(bd);
+            });
+
+          if (items.isEmpty) {
+            return Center(
+              child: Text(
+                expiredOnly ? s.noExpiredItems : s.noExpiringItems,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            );
+          }
+          return ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ListTile(
+                title: Text(item.name ?? s.unnamed),
+                subtitle: Text(item.expiryDate ?? ''),
+                trailing: Text('${s.qtyLabel}: ${item.quantity}'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ItemDetailScreen(itemId: item.id)),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+DateTime? _parseDateValue(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  return DateTime.tryParse(raw.trim());
 }

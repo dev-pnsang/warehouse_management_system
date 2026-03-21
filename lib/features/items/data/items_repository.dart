@@ -53,7 +53,14 @@ class ItemsRepository {
     int quantity = 1,
     int? categoryId,
     int? locationId,
+    String? notes,
     String? barcode,
+    double? purchasePrice,
+    String? purchaseDate,
+    String? expiryDate,
+    String? store,
+    String? serialNumber,
+    String? tags,
   }) async {
     final id = await _dao.insertItem(ItemsCompanion.insert(
       imagePath: imagePath,
@@ -61,7 +68,14 @@ class ItemsRepository {
       quantity: Value(quantity),
       categoryId: Value(categoryId),
       locationId: Value(locationId),
+      notes: Value(notes),
       barcode: Value(barcode),
+      purchasePrice: Value(purchasePrice),
+      purchaseDate: Value(purchaseDate),
+      expiryDate: Value(expiryDate),
+      store: Value(store),
+      serialNumber: Value(serialNumber),
+      tags: Value(tags),
     ));
     await _dao.insertHistory(ItemHistoryCompanion.insert(
       itemId: id,
@@ -71,7 +85,21 @@ class ItemsRepository {
     return id;
   }
 
-  Future<void> updateItem(Item item, {int? newQuantity, String? name, String? notes, int? categoryId, int? locationId}) async {
+  Future<void> updateItem(
+    Item item, {
+    int? newQuantity,
+    String? name,
+    String? notes,
+    int? categoryId,
+    int? locationId,
+    String? barcode,
+    String? store,
+    String? serialNumber,
+    String? tags,
+    double? purchasePrice,
+    String? purchaseDate,
+    String? expiryDate,
+  }) async {
     final delta = newQuantity != null ? newQuantity - item.quantity : 0;
     final c = item.toCompanion(true).copyWith(
       name: Value(name ?? item.name),
@@ -79,6 +107,13 @@ class ItemsRepository {
       notes: Value(notes ?? item.notes),
       categoryId: Value(categoryId ?? item.categoryId),
       locationId: Value(locationId ?? item.locationId),
+      barcode: Value(barcode ?? item.barcode),
+      store: Value(store ?? item.store),
+      serialNumber: Value(serialNumber ?? item.serialNumber),
+      tags: Value(tags ?? item.tags),
+      purchasePrice: Value(purchasePrice ?? item.purchasePrice),
+      purchaseDate: Value(purchaseDate ?? item.purchaseDate),
+      expiryDate: Value(expiryDate ?? item.expiryDate),
       updatedAt: Value(DateTime.now()),
     );
     await _dao.updateItem(c);

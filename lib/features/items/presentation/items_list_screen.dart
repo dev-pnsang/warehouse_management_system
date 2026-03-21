@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/l10n/app_locale.dart';
 import '../../../core/database/app_database.dart';
 import '../../categories/data/categories_repository.dart';
+import '../../locations/data/locations_repository.dart';
 import '../data/items_repository.dart';
 import '../../../core/widgets/image_preview_screen.dart';
 import 'item_detail_screen.dart';
@@ -12,6 +14,7 @@ import 'barcode_scanner_screen.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 final selectedCategoryFilterProvider = StateProvider<int?>((ref) => null);
+final selectedLocationFilterProvider = StateProvider<int?>((ref) => null);
 
 class ItemsListScreen extends ConsumerStatefulWidget {
   const ItemsListScreen({super.key});
@@ -23,14 +26,16 @@ class ItemsListScreen extends ConsumerStatefulWidget {
 class _ItemsListScreenState extends ConsumerState<ItemsListScreen> {
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(appStringsProvider);
     final query = ref.watch(searchQueryProvider);
     final categoryId = ref.watch(selectedCategoryFilterProvider);
-    final itemsStream = ref.watch(itemsRepositoryProvider).watchSearch(query);
+    final locationId = ref.watch(selectedLocationFilterProvider);
+    final itemsStream = ref.watch(itemsRepositoryProvider).watchAll();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Items', style: TextStyle(color: AppColors.textPrimary)),
+        title: Text(s.items, style: const TextStyle(color: AppColors.textPrimary)),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.primary,
         actions: [
@@ -57,36 +62,67 @@ class _ItemsListScreenState extends ConsumerState<ItemsListScreen> {
               onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
             ),
           ),
-          FutureBuilder<List<Category>>(
-            future: ref.read(categoriesRepositoryProvider).getAll(),
-            builder: (context, snap) {
-              final categories = snap.data ?? [];
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    ChoiceChip(
-                      label: const Text('All'),
-                      selected: categoryId == null,
-                      onSelected: (_) => ref.read(selectedCategoryFilterProvider.notifier).state = null,
-                    ),
-                    const SizedBox(width: 8),
-                    ...categories.map(
-                      (c) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(c.name),
-                          selected: categoryId == c.id,
-                          onSelected: (_) =>
-                              ref.read(selectedCategoryFilterProvider.notifier).state = c.id,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: FutureBuilder<List<Category>>(
+                    future: ref.read(categoriesRepositoryProvider).getAll(),
+                    builder: (context, snap) {
+                      final categories = snap.data ?? [];
+                      final hasSelectedCategory = categories.any((c) => c.id == categoryId);
+                      final safeCategoryValue = hasSelectedCategory ? categoryId : null;
+                      return DropdownButtonFormField<int?>(
+                        isExpanded: true,
+                        value: safeCategoryValue,
+                        decoration: InputDecoration(
+                          labelText: s.filterCategory,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: AppColors.surface,
                         ),
-                      ),
-                    ),
-                  ],
+                        items: [
+                          DropdownMenuItem<int?>(value: null, child: Text(s.all)),
+                          ...categories.map(
+                            (c) => DropdownMenuItem<int?>(value: c.id, child: Text(c.name)),
+                          ),
+                        ],
+                        onChanged: (v) => ref.read(selectedCategoryFilterProvider.notifier).state = v,
+                      );
+                    },
+                  ),
                 ),
-              );
-            },
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FutureBuilder<List<Location>>(
+                    future: ref.read(locationsRepositoryProvider).getAll(),
+                    builder: (context, snap) {
+                      final locations = snap.data ?? [];
+                      final hasSelectedLocation = locations.any((loc) => loc.id == locationId);
+                      final safeLocationValue = hasSelectedLocation ? locationId : null;
+                      return DropdownButtonFormField<int?>(
+                        isExpanded: true,
+                        value: safeLocationValue,
+                        decoration: InputDecoration(
+                          labelText: s.filterLocation,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                        ),
+                        items: [
+                          DropdownMenuItem<int?>(value: null, child: Text(s.all)),
+                          ...locations.map(
+                            (loc) => DropdownMenuItem<int?>(value: loc.id, child: Text(loc.name)),
+                          ),
+                        ],
+                        onChanged: (v) => ref.read(selectedLocationFilterProvider.notifier).state = v,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -94,10 +130,22 @@ class _ItemsListScreenState extends ConsumerState<ItemsListScreen> {
               stream: itemsStream,
               builder: (context, snap) {
                 var items = snap.data ?? [];
+                final q = query.trim().toLowerCase();
+                if (q.isNotEmpty) {
+                  items = items.where((i) {
+                    final name = (i.name ?? '').toLowerCase();
+                    final barcode = (i.barcode ?? '').toLowerCase();
+                    final tags = (i.tags ?? '').toLowerCase();
+                    return name.contains(q) || barcode.contains(q) || tags.contains(q);
+                  }).toList();
+                }
                 if (categoryId != null) {
                   items = items.where((i) => i.categoryId == categoryId).toList();
                 }
-                return _ItemList(items: items, ref: ref);
+                if (locationId != null) {
+                  items = items.where((i) => i.locationId == locationId).toList();
+                }
+                return _ItemList(items: items, ref: ref, s: s);
               },
             ),
           ),
@@ -118,17 +166,18 @@ class _ItemsListScreenState extends ConsumerState<ItemsListScreen> {
 }
 
 class _ItemList extends StatelessWidget {
-  const _ItemList({required this.items, required this.ref});
+  const _ItemList({required this.items, required this.ref, required this.s});
 
   final List<Item> items;
   final WidgetRef ref;
+  final AppStrings s;
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return Center(
         child: Text(
-          'No items. Tap + to add.',
+          s.noItemsYet,
           style: TextStyle(color: AppColors.textSecondary),
         ),
       );
@@ -138,17 +187,18 @@ class _ItemList extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return _ItemCard(item: item, ref: ref);
+        return _ItemCard(item: item, ref: ref, s: s);
       },
     );
   }
 }
 
 class _ItemCard extends StatelessWidget {
-  const _ItemCard({required this.item, required this.ref});
+  const _ItemCard({required this.item, required this.ref, required this.s});
 
   final Item item;
   final WidgetRef ref;
+  final AppStrings s;
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +231,7 @@ class _ItemCard extends StatelessWidget {
           ),
         ),
         title: Text(
-          item.name ?? 'Unnamed',
+          item.name ?? s.unnamed,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: FutureBuilder<Category?>(
@@ -189,7 +239,7 @@ class _ItemCard extends StatelessWidget {
               ? ref.read(categoriesRepositoryProvider).getById(item.categoryId!)
               : null,
           builder: (context, snap) {
-            return Text(snap.data?.name ?? 'No category');
+            return Text(snap.data?.name ?? s.noCategory);
           },
         ),
         trailing: Container(

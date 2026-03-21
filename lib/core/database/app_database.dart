@@ -36,6 +36,7 @@ class Items extends Table {
   TextColumn get barcode => text().nullable()();
   RealColumn get purchasePrice => real().nullable()();
   TextColumn get purchaseDate => text().nullable()();
+  TextColumn get expiryDate => text().nullable()();
   TextColumn get store => text().nullable()();
   TextColumn get serialNumber => text().nullable()();
   TextColumn get tags => text().nullable()();
@@ -74,7 +75,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(items, items.expiryDate);
+          }
+        },
+      );
 
   static LazyDatabase _openConnection() {
     return LazyDatabase(() async {
