@@ -230,17 +230,50 @@ class _ItemCard extends StatelessWidget {
                   ),
           ),
         ),
+        isThreeLine: true,
         title: Text(
           item.name ?? s.unnamed,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: FutureBuilder<Category?>(
-          future: item.categoryId != null
-              ? ref.read(categoriesRepositoryProvider).getById(item.categoryId!)
-              : null,
-          builder: (context, snap) {
-            return Text(snap.data?.name ?? s.noCategory);
-          },
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FutureBuilder<Category?>(
+                future: item.categoryId != null
+                    ? ref.read(categoriesRepositoryProvider).getById(item.categoryId!)
+                    : null,
+                builder: (context, snap) {
+                  final name = snap.data?.name ?? s.noCategory;
+                  return _ItemMetaLine(
+                    icon: Icons.category_outlined,
+                    label: s.category,
+                    value: name,
+                    iconColor: AppColors.primary,
+                    labelColor: AppColors.primary.withOpacity(0.85),
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+              FutureBuilder<Location?>(
+                future: item.locationId != null
+                    ? ref.read(locationsRepositoryProvider).getById(item.locationId!)
+                    : null,
+                builder: (context, snap) {
+                  final name = snap.data?.name ?? s.noLocation;
+                  return _ItemMetaLine(
+                    icon: Icons.place_outlined,
+                    label: s.location,
+                    value: name,
+                    iconColor: AppColors.accent,
+                    labelColor: AppColors.accent.withOpacity(0.9),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -296,6 +329,64 @@ class _ItemCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Một dòng meta (danh mục / vị trí): icon + nhãn cố định + giá trị — dễ phân biệt.
+class _ItemMetaLine extends StatelessWidget {
+  const _ItemMetaLine({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.iconColor,
+    required this.labelColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color iconColor;
+  final Color labelColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: iconColor),
+        const SizedBox(width: 6),
+        Expanded(
+          child: RichText(
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.25,
+                  ),
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: labelColor,
+                    fontSize: 12,
+                  ),
+                ),
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
