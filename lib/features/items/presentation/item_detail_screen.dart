@@ -169,6 +169,16 @@ class _EditableSection extends StatelessWidget {
                 }
               },
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(s.trackLowStockTitle),
+              subtitle: Text(s.trackLowStockSubtitle, style: const TextStyle(fontSize: 12)),
+              value: item.trackLowStock,
+              onChanged: (v) async {
+                await ref.read(itemsRepositoryProvider).updateItem(item, trackLowStock: v);
+                onUpdated();
+              },
+            ),
             _EditTile(
               label: s.notes,
               value: item.notes,

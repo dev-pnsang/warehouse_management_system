@@ -36,6 +36,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
   bool _saving = false;
   bool _picking = false;
   int _rotationQuarterTurns = 0;
+  bool _trackLowStock = false;
 
   @override
   void dispose() {
@@ -146,6 +147,7 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
             store: store.isEmpty ? null : store,
             serialNumber: serialNumber.isEmpty ? null : serialNumber,
             tags: tags.isEmpty ? null : tags,
+            trackLowStock: _trackLowStock,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -441,7 +443,16 @@ class _AddItemSheetState extends ConsumerState<AddItemSheet> {
                     );
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _trackLowStock,
+                  onChanged: (v) => setState(() => _trackLowStock = v ?? false),
+                  title: Text(s.trackLowStockTitle),
+                  subtitle: Text(s.trackLowStockSubtitle, style: const TextStyle(fontSize: 12)),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                const SizedBox(height: 12),
                 FilledButton(
                   onPressed: (_saving || _imageFile == null) ? null : _save,
                   style: FilledButton.styleFrom(

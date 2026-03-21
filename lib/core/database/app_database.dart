@@ -40,6 +40,8 @@ class Items extends Table {
   TextColumn get store => text().nullable()();
   TextColumn get serialNumber => text().nullable()();
   TextColumn get tags => text().nullable()();
+  /// Đánh dấu quan tâm sắp hết: chỉ các item bật cờ này mới được tính vào cảnh báo low stock trên dashboard.
+  BoolColumn get trackLowStock => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -75,13 +77,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.addColumn(items, items.expiryDate);
+          }
+          if (from < 3) {
+            await m.addColumn(items, items.trackLowStock);
           }
         },
       );

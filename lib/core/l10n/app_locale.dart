@@ -49,6 +49,13 @@ class AppStrings {
   String get totalItems => isVi ? 'Tổng vật phẩm' : 'Total Items';
   String get totalCategories => isVi ? 'Danh mục' : 'Categories';
   String get lowStock => isVi ? 'Sắp hết' : 'Low Stock';
+  String get lowStockTrackedHint =>
+      isVi ? 'Chỉ tính vật phẩm đã bật theo dõi sắp hết hàng' : 'Only items marked for low-stock tracking';
+  String get totalInventoryValue => isVi ? 'Tổng giá trị' : 'Total value';
+  String get totalValueHint => isVi ? 'Tổng (giá mua × số lượng), bỏ qua mục chưa nhập giá' : 'Sum of price × qty; items without price are skipped';
+  String get trackLowStockTitle => isVi ? 'Theo dõi sắp hết hàng' : 'Track low stock';
+  String get trackLowStockSubtitle =>
+      isVi ? 'Bật để mục Sắp hết trên Tổng quan đếm vật phẩm này khi số lượng thấp' : 'When on, this item counts toward Low stock on the dashboard when quantity is low';
   String get recentActivity => isVi ? 'Hoạt động gần đây' : 'Recent Activity';
   String get expiringSoon => isVi ? 'Sắp hết hạn' : 'Expiring soon';
   String get expired => isVi ? 'Đã hết hạn' : 'Expired';

@@ -26,14 +26,28 @@ class ItemsRepository {
   Future<List<Item>> getByBarcode(String barcode) => _dao.getByBarcode(barcode);
 
   Future<int> getTotalCount() => _dao.getTotalCount();
-  Future<int> getLowStockCount(int threshold) => _dao.getLowStockCount(threshold);
+  Future<int> getLowStockCount(int threshold) async {
+    final all = await _dao.getAll();
+    return all.where((i) => i.trackLowStock && i.quantity < threshold).length;
+  }
 
   /// Real-time stream: tổng số item (cập nhật khi thêm/xóa/sửa).
   Stream<int> watchTotalCount() => _dao.watchAll().map((l) => l.length);
 
-  /// Real-time stream: số item dưới ngưỡng low stock.
-  Stream<int> watchLowStockCount(int threshold) =>
-      _dao.watchAll().map((l) => l.where((i) => i.quantity < threshold).length);
+  /// Real-time: số item dưới ngưỡng low stock **và** đã bật [Item.trackLowStock].
+  Stream<int> watchLowStockCount(int threshold) => _dao.watchAll().map(
+        (l) => l.where((i) => i.trackLowStock && i.quantity < threshold).length,
+      );
+
+  /// Tổng giá trị tồn kho: Σ (giá mua × số lượng), bỏ qua item không có giá mua.
+  Stream<double> watchTotalInventoryValue() => _dao.watchAll().map((items) {
+        var sum = 0.0;
+        for (final i in items) {
+          final p = i.purchasePrice;
+          if (p != null) sum += p * i.quantity;
+        }
+        return sum;
+      });
 
   /// Real-time stream: danh sách item gần đây (theo updatedAt).
   Stream<List<Item>> watchRecent(int limit) => _dao.watchAll().map((list) {
@@ -61,6 +75,7 @@ class ItemsRepository {
     String? store,
     String? serialNumber,
     String? tags,
+    bool trackLowStock = false,
   }) async {
     final id = await _dao.insertItem(ItemsCompanion.insert(
       imagePath: imagePath,
@@ -76,6 +91,7 @@ class ItemsRepository {
       store: Value(store),
       serialNumber: Value(serialNumber),
       tags: Value(tags),
+      trackLowStock: Value(trackLowStock),
     ));
     await _dao.insertHistory(ItemHistoryCompanion.insert(
       itemId: id,
@@ -99,6 +115,7 @@ class ItemsRepository {
     double? purchasePrice,
     String? purchaseDate,
     String? expiryDate,
+    bool? trackLowStock,
   }) async {
     final delta = newQuantity != null ? newQuantity - item.quantity : 0;
     final c = item.toCompanion(true).copyWith(
@@ -114,6 +131,7 @@ class ItemsRepository {
       purchasePrice: Value(purchasePrice ?? item.purchasePrice),
       purchaseDate: Value(purchaseDate ?? item.purchaseDate),
       expiryDate: Value(expiryDate ?? item.expiryDate),
+      trackLowStock: trackLowStock == null ? const Value.absent() : Value(trackLowStock),
       updatedAt: Value(DateTime.now()),
     );
     await _dao.updateItem(c);

@@ -622,6 +622,16 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
   late final GeneratedColumn<String> tags = GeneratedColumn<String>(
       'tags', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _trackLowStockMeta =
+      const VerificationMeta('trackLowStock');
+  @override
+  late final GeneratedColumn<bool> trackLowStock = GeneratedColumn<bool>(
+      'track_low_stock', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("track_low_stock" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -654,6 +664,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         store,
         serialNumber,
         tags,
+        trackLowStock,
         createdAt,
         updatedAt
       ];
@@ -736,6 +747,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       context.handle(
           _tagsMeta, tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta));
     }
+    if (data.containsKey('track_low_stock')) {
+      context.handle(
+          _trackLowStockMeta,
+          trackLowStock.isAcceptableOrUnknown(
+              data['track_low_stock']!, _trackLowStockMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -781,6 +798,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
           .read(DriftSqlType.string, data['${effectivePrefix}serial_number']),
       tags: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}tags']),
+      trackLowStock: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}track_low_stock'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -809,6 +828,9 @@ class Item extends DataClass implements Insertable<Item> {
   final String? store;
   final String? serialNumber;
   final String? tags;
+
+  /// Đánh dấu quan tâm sắp hết: chỉ các item bật cờ này mới được tính vào cảnh báo low stock trên dashboard.
+  final bool trackLowStock;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Item(
@@ -826,6 +848,7 @@ class Item extends DataClass implements Insertable<Item> {
       this.store,
       this.serialNumber,
       this.tags,
+      required this.trackLowStock,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -867,6 +890,7 @@ class Item extends DataClass implements Insertable<Item> {
     if (!nullToAbsent || tags != null) {
       map['tags'] = Variable<String>(tags);
     }
+    map['track_low_stock'] = Variable<bool>(trackLowStock);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -904,6 +928,7 @@ class Item extends DataClass implements Insertable<Item> {
           ? const Value.absent()
           : Value(serialNumber),
       tags: tags == null && nullToAbsent ? const Value.absent() : Value(tags),
+      trackLowStock: Value(trackLowStock),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -927,6 +952,7 @@ class Item extends DataClass implements Insertable<Item> {
       store: serializer.fromJson<String?>(json['store']),
       serialNumber: serializer.fromJson<String?>(json['serialNumber']),
       tags: serializer.fromJson<String?>(json['tags']),
+      trackLowStock: serializer.fromJson<bool>(json['trackLowStock']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -949,6 +975,7 @@ class Item extends DataClass implements Insertable<Item> {
       'store': serializer.toJson<String?>(store),
       'serialNumber': serializer.toJson<String?>(serialNumber),
       'tags': serializer.toJson<String?>(tags),
+      'trackLowStock': serializer.toJson<bool>(trackLowStock),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -969,6 +996,7 @@ class Item extends DataClass implements Insertable<Item> {
           Value<String?> store = const Value.absent(),
           Value<String?> serialNumber = const Value.absent(),
           Value<String?> tags = const Value.absent(),
+          bool? trackLowStock,
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Item(
@@ -989,6 +1017,7 @@ class Item extends DataClass implements Insertable<Item> {
         serialNumber:
             serialNumber.present ? serialNumber.value : this.serialNumber,
         tags: tags.present ? tags.value : this.tags,
+        trackLowStock: trackLowStock ?? this.trackLowStock,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1017,6 +1046,9 @@ class Item extends DataClass implements Insertable<Item> {
           ? data.serialNumber.value
           : this.serialNumber,
       tags: data.tags.present ? data.tags.value : this.tags,
+      trackLowStock: data.trackLowStock.present
+          ? data.trackLowStock.value
+          : this.trackLowStock,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1039,6 +1071,7 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('store: $store, ')
           ..write('serialNumber: $serialNumber, ')
           ..write('tags: $tags, ')
+          ..write('trackLowStock: $trackLowStock, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1061,6 +1094,7 @@ class Item extends DataClass implements Insertable<Item> {
       store,
       serialNumber,
       tags,
+      trackLowStock,
       createdAt,
       updatedAt);
   @override
@@ -1081,6 +1115,7 @@ class Item extends DataClass implements Insertable<Item> {
           other.store == this.store &&
           other.serialNumber == this.serialNumber &&
           other.tags == this.tags &&
+          other.trackLowStock == this.trackLowStock &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1100,6 +1135,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<String?> store;
   final Value<String?> serialNumber;
   final Value<String?> tags;
+  final Value<bool> trackLowStock;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const ItemsCompanion({
@@ -1117,6 +1153,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.store = const Value.absent(),
     this.serialNumber = const Value.absent(),
     this.tags = const Value.absent(),
+    this.trackLowStock = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1135,6 +1172,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.store = const Value.absent(),
     this.serialNumber = const Value.absent(),
     this.tags = const Value.absent(),
+    this.trackLowStock = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : imagePath = Value(imagePath);
@@ -1153,6 +1191,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<String>? store,
     Expression<String>? serialNumber,
     Expression<String>? tags,
+    Expression<bool>? trackLowStock,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1171,6 +1210,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (store != null) 'store': store,
       if (serialNumber != null) 'serial_number': serialNumber,
       if (tags != null) 'tags': tags,
+      if (trackLowStock != null) 'track_low_stock': trackLowStock,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1191,6 +1231,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       Value<String?>? store,
       Value<String?>? serialNumber,
       Value<String?>? tags,
+      Value<bool>? trackLowStock,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt}) {
     return ItemsCompanion(
@@ -1208,6 +1249,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       store: store ?? this.store,
       serialNumber: serialNumber ?? this.serialNumber,
       tags: tags ?? this.tags,
+      trackLowStock: trackLowStock ?? this.trackLowStock,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1258,6 +1300,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (tags.present) {
       map['tags'] = Variable<String>(tags.value);
     }
+    if (trackLowStock.present) {
+      map['track_low_stock'] = Variable<bool>(trackLowStock.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1284,6 +1329,7 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('store: $store, ')
           ..write('serialNumber: $serialNumber, ')
           ..write('tags: $tags, ')
+          ..write('trackLowStock: $trackLowStock, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2758,6 +2804,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String?> store,
   Value<String?> serialNumber,
   Value<String?> tags,
+  Value<bool> trackLowStock,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -2776,6 +2823,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String?> store,
   Value<String?> serialNumber,
   Value<String?> tags,
+  Value<bool> trackLowStock,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -2882,6 +2930,9 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get tags => $composableBuilder(
       column: $table.tags, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get trackLowStock => $composableBuilder(
+      column: $table.trackLowStock, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3020,6 +3071,10 @@ class $$ItemsTableOrderingComposer
   ColumnOrderings<String> get tags => $composableBuilder(
       column: $table.tags, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get trackLowStock => $composableBuilder(
+      column: $table.trackLowStock,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3111,6 +3166,9 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<String> get tags =>
       $composableBuilder(column: $table.tags, builder: (column) => column);
+
+  GeneratedColumn<bool> get trackLowStock => $composableBuilder(
+      column: $table.trackLowStock, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3242,6 +3300,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> store = const Value.absent(),
             Value<String?> serialNumber = const Value.absent(),
             Value<String?> tags = const Value.absent(),
+            Value<bool> trackLowStock = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
           }) =>
@@ -3260,6 +3319,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             store: store,
             serialNumber: serialNumber,
             tags: tags,
+            trackLowStock: trackLowStock,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),
@@ -3278,6 +3338,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> store = const Value.absent(),
             Value<String?> serialNumber = const Value.absent(),
             Value<String?> tags = const Value.absent(),
+            Value<bool> trackLowStock = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
           }) =>
@@ -3296,6 +3357,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             store: store,
             serialNumber: serialNumber,
             tags: tags,
+            trackLowStock: trackLowStock,
             createdAt: createdAt,
             updatedAt: updatedAt,
           ),

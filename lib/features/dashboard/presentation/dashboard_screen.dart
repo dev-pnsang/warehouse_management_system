@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/database/app_database.dart';
@@ -21,6 +22,7 @@ class DashboardScreen extends ConsumerWidget {
     final totalItems = ref.watch(totalItemsProvider);
     final totalCategories = ref.watch(totalCategoriesProvider);
     final lowStockCount = ref.watch(lowStockCountProvider);
+    final totalInventoryValue = ref.watch(totalInventoryValueProvider);
     final expiringSoonCount = ref.watch(expiringSoonCountProvider);
     final expiredCount = ref.watch(expiredCountProvider);
     final recentItems = ref.watch(recentActivityProvider);
@@ -98,10 +100,34 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     _StatCard(
+                      label: s.totalInventoryValue,
+                      value: _valueFromAsyncMoney(totalInventoryValue, s),
+                      icon: Icons.payments_outlined,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 6, bottom: 4),
+                      child: Text(
+                        s.totalValueHint,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _StatCard(
                       label: s.lowStock,
                       value: _valueFromAsyncInt(lowStockCount),
                       icon: Icons.warning_amber_rounded,
                       accent: true,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, top: 6),
+                      child: Text(
+                        s.lowStockTrackedHint,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -271,6 +297,20 @@ String _valueFromAsyncInt(AsyncValue<int> v) {
   return '—';
 }
 
+String _valueFromAsyncMoney(AsyncValue<double> v, AppStrings s) {
+  final value = v.valueOrNull;
+  if (value != null) return _formatInventoryMoney(s, value);
+  return '—';
+}
+
+String _formatInventoryMoney(AppStrings s, double amount) {
+  if (s.isVi) {
+    return '${NumberFormat('#,##0.##', 'vi_VN').format(amount)} đ';
+  }
+  return NumberFormat.currency(locale: 'en_US', symbol: r'$', decimalDigits: amount == amount.roundToDouble() ? 0 : 2)
+      .format(amount);
+}
+
 class _SearchChip extends StatelessWidget {
   const _SearchChip({required this.label, required this.onTap});
 
@@ -363,11 +403,15 @@ class _StatCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: accent ? AppColors.lowStock : AppColors.textPrimary,
-                    ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: accent ? AppColors.lowStock : AppColors.textPrimary,
+                      ),
+                ),
               ),
             ],
           ),

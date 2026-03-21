@@ -14,9 +14,14 @@ final totalCategoriesProvider = StreamProvider<int>((ref) {
   return ref.watch(categoriesRepositoryProvider).watchAll().map((l) => l.length);
 });
 
-/// Real-time: số item dưới ngưỡng low stock.
+/// Real-time: số item dưới ngưỡng low stock **và** đã bật theo dõi ([Item.trackLowStock]).
 final lowStockCountProvider = StreamProvider<int>((ref) {
   return ref.watch(itemsRepositoryProvider).watchLowStockCount(AppConstants.lowStockThreshold);
+});
+
+/// Real-time: tổng Σ (giá mua × số lượng), bỏ qua item không có giá mua.
+final totalInventoryValueProvider = StreamProvider<double>((ref) {
+  return ref.watch(itemsRepositoryProvider).watchTotalInventoryValue();
 });
 
 /// Real-time: danh sách item gần đây.
